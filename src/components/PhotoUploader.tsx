@@ -193,7 +193,6 @@ export default function PhotoUploader({ photos, onPhotosChange }: Props) {
         type="file"
         accept="image/*"
         multiple
-        capture="environment"
         className="hidden"
         onChange={(e) => e.target.files && addFiles(e.target.files)}
       />
