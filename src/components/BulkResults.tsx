@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ListingOutput from "./ListingOutput";
+import PhotoFeedback from "./PhotoFeedback";
 import type { BulkItem, Platform, Tone } from "@/lib/types";
 
 interface Props {
@@ -103,12 +104,15 @@ export default function BulkResults({
                 {item.error ? (
                   <p className="text-sm text-red-500">{item.error}</p>
                 ) : item.result ? (
-                  <ListingOutput
-                    listing={item.result.listing}
-                    tagData={item.result.tag_data}
-                    platform={platform}
-                    tone={tone}
-                  />
+                  <div className="space-y-3">
+                    <PhotoFeedback analysis={item.result.photo_analysis} />
+                    <ListingOutput
+                      listing={item.result.listing}
+                      tagData={item.result.tag_data}
+                      platform={platform}
+                      tone={tone}
+                    />
+                  </div>
                 ) : null}
               </div>
             )}
