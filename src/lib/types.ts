@@ -58,3 +58,21 @@ export interface AnalysisResult {
 
 export type Platform = "vinted" | "depop";
 export type Tone = "casual" | "professional";
+export type Mode = "single" | "bulk";
+
+export interface PhotoGroup {
+  label: string;
+  indices: number[];
+}
+
+export interface GroupResult {
+  groups: PhotoGroup[];
+}
+
+export interface BulkItem {
+  group: PhotoGroup;
+  photos: Photo[];
+  result: AnalysisResult | null;
+  loading: boolean;
+  error: string | null;
+}

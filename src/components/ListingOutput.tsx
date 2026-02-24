@@ -8,9 +8,9 @@ interface Props {
   tagData: TagData;
   platform: Platform;
   tone: Tone;
-  onPlatformChange: (p: Platform) => void;
-  onToneChange: (t: Tone) => void;
-  onRegenerate: () => void;
+  onPlatformChange?: (p: Platform) => void;
+  onToneChange?: (t: Tone) => void;
+  onRegenerate?: () => void;
 }
 
 export default function ListingOutput({
@@ -40,54 +40,56 @@ export default function ListingOutput({
 
   return (
     <div className="space-y-3">
-      {/* Controls */}
-      <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1">
-            Settings
-          </span>
+      {/* Controls — hidden in bulk mode (no onRegenerate) */}
+      {onRegenerate && (
+        <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1">
+              Settings
+            </span>
 
-          {(["vinted", "depop"] as Platform[]).map((p) => (
+            {(["vinted", "depop"] as Platform[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => onPlatformChange?.(p)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  platform === p
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {p === "vinted" ? "Vinted" : "Depop"}
+              </button>
+            ))}
+
+            <div className="w-px h-4 bg-gray-200 mx-1" />
+
+            {(["casual", "professional"] as Tone[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => onToneChange?.(t)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  tone === t
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+
             <button
-              key={p}
-              onClick={() => onPlatformChange(p)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                platform === p
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              onClick={onRegenerate}
+              className="ml-auto px-3.5 py-1.5 text-xs font-semibold bg-gray-900 hover:bg-gray-700 text-white rounded-lg transition-colors"
             >
-              {p === "vinted" ? "Vinted" : "Depop"}
+              Regenerate
             </button>
-          ))}
-
-          <div className="w-px h-4 bg-gray-200 mx-1" />
-
-          {(["casual", "professional"] as Tone[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => onToneChange(t)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                tone === t
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-
-          <button
-            onClick={onRegenerate}
-            className="ml-auto px-3.5 py-1.5 text-xs font-semibold bg-gray-900 hover:bg-gray-700 text-white rounded-lg transition-colors"
-          >
-            Regenerate
-          </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Change platform or tone, then hit Regenerate to refresh the listing.
+          </p>
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          Change platform or tone, then hit Regenerate to refresh the listing.
-        </p>
-      </div>
+      )}
 
       {/* Title */}
       <ListingCard

@@ -94,6 +94,24 @@ LISTING:
 - price_min/price_max: realistic GBP resale prices. Consider brand, condition, type, and typical secondhand market values. For luxury/designer, price higher. For fast fashion in good condition, price accordingly.
 - price_reasoning: one sentence explaining the price logic
 - title: max 60 characters
-- description: 150–200 words
+- description: ${platform === 'depop' ? '3–4 short punchy sentences, max 60 words. Give it personality. No filler phrases.' : '4–5 clear sentences, max 80 words. Lead with the most important details. No waffle.'}
 - hashtags: 8–10 items (actual hashtag strings including # for Depop, keywords without # for Vinted)`;
+}
+
+export function buildGroupPrompt(imageCount: number): string {
+  return `You are analysing ${imageCount} clothing photo(s). Group them by clothing item — photos of the same item go in the same group, different items go in separate groups.
+
+Return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON starting with { and ending with }.
+
+{
+  "groups": [
+    { "label": "Blue denim jacket", "indices": [0, 1, 2] },
+    { "label": "White cotton t-shirt", "indices": [3, 4] }
+  ]
+}
+
+Rules:
+- Each index (0-based) must appear exactly once across all groups
+- label: short descriptive name for the item (e.g. "Black leather boots", "Floral midi dress")
+- If you cannot distinguish separate items, put all indices in one group`;
 }

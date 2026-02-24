@@ -4,17 +4,39 @@ import { useState, useCallback } from "react";
 import PhotoUploader from "@/components/PhotoUploader";
 import PhotoFeedback from "@/components/PhotoFeedback";
 import ListingOutput from "@/components/ListingOutput";
-import type { AnalysisResult, Photo, Platform, Tone } from "@/lib/types";
+import ModeSelector from "@/components/ModeSelector";
+import BulkGroupReview from "@/components/BulkGroupReview";
+import BulkResults from "@/components/BulkResults";
+import type {
+  AnalysisResult,
+  Photo,
+  Platform,
+  Tone,
+  Mode,
+  PhotoGroup,
+  GroupResult,
+  BulkItem,
+} from "@/lib/types";
 
-type AppStep = "upload" | "loading" | "results";
+type AppStep =
+  | "mode-select"
+  | "upload"
+  | "grouping"
+  | "group-review"
+  | "loading"
+  | "results"
+  | "bulk-results";
 
 export default function Home() {
-  const [step, setStep] = useState<AppStep>("upload");
+  const [step, setStep] = useState<AppStep>("mode-select");
+  const [mode, setMode] = useState<Mode>("single");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [platform, setPlatform] = useState<Platform>("vinted");
   const [tone, setTone] = useState<Tone>("casual");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [groups, setGroups] = useState<PhotoGroup[]>([]);
+  const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
 
   const analyse = useCallback(async () => {
     if (!photos.length) return;
@@ -46,12 +68,96 @@ export default function Home() {
     }
   }, [photos, platform, tone]);
 
+  const groupPhotos = useCallback(async () => {
+    if (!photos.length) return;
+    setStep("grouping");
+    setError(null);
+
+    try {
+      const res = await fetch("/api/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: photos.map((p) => p.compressed) }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Request failed" }));
+        throw new Error(err.error ?? "Grouping failed");
+      }
+
+      const data: GroupResult = await res.json();
+      setGroups(data.groups);
+      setStep("group-review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setStep("upload");
+    }
+  }, [photos]);
+
+  const generateBulk = useCallback(async () => {
+    const initialItems: BulkItem[] = groups.map((group) => ({
+      group,
+      photos: group.indices.map((i) => photos[i]),
+      result: null,
+      loading: true,
+      error: null,
+    }));
+    setBulkItems(initialItems);
+    setStep("bulk-results");
+
+    groups.forEach((group, idx) => {
+      const groupPhotos = group.indices.map((i) => photos[i]);
+      fetch("/api/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: groupPhotos.map((p) => p.compressed),
+          platform,
+          tone,
+        }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const err = await res
+              .json()
+              .catch(() => ({ error: "Request failed" }));
+            throw new Error(err.error ?? "Analysis failed");
+          }
+          return res.json() as Promise<AnalysisResult>;
+        })
+        .then((data) => {
+          setBulkItems((prev) =>
+            prev.map((item, i) =>
+              i === idx ? { ...item, result: data, loading: false } : item
+            )
+          );
+        })
+        .catch((err) => {
+          setBulkItems((prev) =>
+            prev.map((item, i) =>
+              i === idx
+                ? {
+                    ...item,
+                    error:
+                      err instanceof Error ? err.message : "Analysis failed",
+                    loading: false,
+                  }
+                : item
+            )
+          );
+        });
+    });
+  }, [groups, photos, platform, tone]);
+
   const startOver = useCallback(() => {
     photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setPhotos([]);
     setResult(null);
     setError(null);
-    setStep("upload");
+    setMode("single");
+    setGroups([]);
+    setBulkItems([]);
+    setStep("mode-select");
   }, [photos]);
 
   return (
@@ -66,6 +172,16 @@ export default function Home() {
             Upload your clothes. Get a perfect listing.
           </p>
         </header>
+
+        {/* Mode select */}
+        {step === "mode-select" && (
+          <ModeSelector
+            onSelect={(m) => {
+              setMode(m);
+              setStep("upload");
+            }}
+          />
+        )}
 
         {/* Upload step */}
         {step === "upload" && (
@@ -125,30 +241,69 @@ export default function Home() {
               </div>
             )}
 
-            {/* Generate button */}
+            {/* Generate / Group button */}
             <button
-              onClick={analyse}
+              onClick={mode === "single" ? analyse : groupPhotos}
               disabled={photos.length === 0}
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:cursor-not-allowed"
             >
               {photos.length === 0
                 ? "Add photos to get started"
-                : `Generate ${platform === "vinted" ? "Vinted" : "Depop"} listing →`}
+                : mode === "single"
+                  ? `Generate ${platform === "vinted" ? "Vinted" : "Depop"} listing →`
+                  : `Identify items in ${photos.length} photo${photos.length !== 1 ? "s" : ""} →`}
             </button>
 
-            {photos.length > 0 && (
+            {photos.length > 0 && mode === "single" && (
               <p className="text-xs text-center text-gray-400">
                 Tip: include a photo of the care label for better results
+              </p>
+            )}
+            {mode === "bulk" && (
+              <p className="text-xs text-center text-gray-400">
+                Upload photos of all your items — we&apos;ll detect and group
+                them automatically
               </p>
             )}
           </div>
         )}
 
-        {/* Loading step */}
-        {step === "loading" && (
+        {/* Grouping step */}
+        {(step === "loading" || step === "grouping") && (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-500 text-sm">Analysing your photos...</p>
+            <p className="text-gray-500 text-sm">
+              {step === "grouping"
+                ? "Identifying items in your photos…"
+                : "Analysing your photos…"}
+            </p>
+          </div>
+        )}
+
+        {/* Group review step */}
+        {step === "group-review" && (
+          <div className="space-y-4">
+            <button
+              onClick={() => setStep("upload")}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Back
+            </button>
+            <BulkGroupReview
+              groups={groups}
+              photos={photos}
+              onConfirm={generateBulk}
+            />
           </div>
         )}
 
@@ -191,6 +346,37 @@ export default function Home() {
                 setTone(t);
               }}
               onRegenerate={analyse}
+            />
+          </div>
+        )}
+
+        {/* Bulk results step */}
+        {step === "bulk-results" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={startOver}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Start over
+              </button>
+            </div>
+
+            <BulkResults
+              bulkItems={bulkItems}
+              platform={platform}
+              tone={tone}
+              onRegenerateAll={generateBulk}
             />
           </div>
         )}
