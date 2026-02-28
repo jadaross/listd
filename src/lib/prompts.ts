@@ -69,7 +69,10 @@ Return exactly this JSON structure (fill in all fields):
     "hashtags": [],
     "price_min": 0,
     "price_max": 0,
-    "price_reasoning": ""
+    "price_reasoning": "",
+    "gender": "women",
+    "main_category": "tops",
+    "subcategory": ""
   }
 }
 
@@ -95,7 +98,10 @@ LISTING:
 - price_reasoning: one sentence explaining the price logic
 - title: max 60 characters
 - description: ${platform === 'depop' ? '3–4 short punchy sentences, max 60 words. Give it personality. No filler phrases.' : '4–5 clear sentences, max 80 words. Lead with the most important details. No waffle.'}
-- hashtags: 8–10 items (actual hashtag strings including # for Depop, keywords without # for Vinted)`;
+- hashtags: 8–10 items (actual hashtag strings including # for Depop, keywords without # for Vinted)
+- gender: "women" | "men" | "kids" | "unisex" — who this item is for
+- main_category: "tops" | "bottoms" | "dresses" | "outerwear" | "knitwear" | "swimwear" | "underwear" | "sportswear" | "shoes" | "accessories" | "bags" | "other"
+- subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;
 }
 
 export function buildGroupPrompt(imageCount: number): string {

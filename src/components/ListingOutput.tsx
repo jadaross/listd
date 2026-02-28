@@ -2,6 +2,8 @@
 
 import CopyButton from "./CopyButton";
 import type { Listing, TagData, Platform, Tone } from "@/lib/types";
+import { getCategories } from "@/lib/categories";
+import type { Gender, MainCategory } from "@/lib/categories";
 
 interface Props {
   listing: Listing;
@@ -160,6 +162,33 @@ export default function ListingOutput({
             ))}
         </div>
       </div>
+
+      {/* Listed under — category classification */}
+      {listing.gender && listing.main_category && (
+        (() => {
+          const cats = getCategories(
+            listing.gender as Gender,
+            listing.main_category as MainCategory
+          );
+          return (
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Listed under
+              </p>
+              <div className="space-y-2">
+                <TagRow label="Vinted" value={cats.vinted} />
+                <TagRow label="Depop" value={cats.depop} />
+                <TagRow label="eBay" value={cats.ebay.name} />
+              </div>
+              {listing.subcategory && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Item type: <span className="font-medium text-gray-500">{listing.subcategory}</span>
+                </p>
+              )}
+            </div>
+          );
+        })()
+      )}
 
       {/* Hashtags / Keywords */}
       {listing.hashtags.length > 0 && (

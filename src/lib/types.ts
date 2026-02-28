@@ -48,6 +48,24 @@ export interface Listing {
   price_min: number;
   price_max: number;
   price_reasoning: string;
+  gender?: "women" | "men" | "kids" | "unisex";
+  main_category?: string;
+  subcategory?: string;
+}
+
+export interface PlatformPriceData {
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  count: number;
+  currency: string;
+}
+
+export interface MarketInsights {
+  ebay: PlatformPriceData;
+  vinted: PlatformPriceData;
+  depop: PlatformPriceData;
+  query: string;
 }
 
 export interface AnalysisResult {
@@ -75,4 +93,10 @@ export interface BulkItem {
   result: AnalysisResult | null;
   loading: boolean;
   error: string | null;
+}
+
+export interface EbayConnectionStatus {
+  connected: boolean;
+  username: string | null;
+  expiresAt: number | null;
 }

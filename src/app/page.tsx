@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import PhotoUploader from "@/components/PhotoUploader";
 import PhotoFeedback from "@/components/PhotoFeedback";
 import ListingOutput from "@/components/ListingOutput";
 import ModeSelector from "@/components/ModeSelector";
 import BulkGroupReview from "@/components/BulkGroupReview";
 import BulkResults from "@/components/BulkResults";
+import EbayConnect from "@/components/EbayConnect";
+import MarketInsights from "@/components/MarketInsights";
 import type {
   AnalysisResult,
   Photo,
@@ -16,6 +18,7 @@ import type {
   PhotoGroup,
   GroupResult,
   BulkItem,
+  MarketInsights as MarketInsightsType,
 } from "@/lib/types";
 
 type AppStep =
@@ -29,6 +32,19 @@ type AppStep =
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>("mode-select");
+  const [ebayConnectedToast, setEbayConnectedToast] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("ebay") === "connected") {
+      setEbayConnectedToast(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("ebay");
+      window.history.replaceState({}, "", url.toString());
+      const t = setTimeout(() => setEbayConnectedToast(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, []);
   const [mode, setMode] = useState<Mode>("single");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [platform, setPlatform] = useState<Platform>("vinted");
@@ -37,6 +53,30 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<PhotoGroup[]>([]);
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
+  const [marketInsights, setMarketInsights] = useState<MarketInsightsType | null>(null);
+  const [loadingMarket, setLoadingMarket] = useState(false);
+
+  const fetchMarket = useCallback((listing: AnalysisResult["listing"]) => {
+    if (!listing.brand && !listing.subcategory) return;
+    setLoadingMarket(true);
+    setMarketInsights(null);
+    fetch("/api/market", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brand: listing.brand,
+        subcategory: listing.subcategory ?? listing.clothing_type,
+        gender: listing.gender ?? "women",
+        main_category: listing.main_category ?? "other",
+      }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: MarketInsightsType | null) => {
+        if (data) setMarketInsights(data);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMarket(false));
+  }, []);
 
   const analyse = useCallback(async () => {
     if (!photos.length) return;
@@ -62,11 +102,12 @@ export default function Home() {
       const data: AnalysisResult = await res.json();
       setResult(data);
       setStep("results");
+      fetchMarket(data.listing);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setStep("upload");
     }
-  }, [photos, platform, tone]);
+  }, [photos, platform, tone, fetchMarket]);
 
   const groupPhotos = useCallback(async () => {
     if (!photos.length) return;
@@ -157,6 +198,8 @@ export default function Home() {
     setMode("single");
     setGroups([]);
     setBulkItems([]);
+    setMarketInsights(null);
+    setLoadingMarket(false);
     setStep("mode-select");
   }, [photos]);
 
@@ -171,7 +214,17 @@ export default function Home() {
           <p className="text-gray-500 text-sm mt-1">
             Upload your clothes. Get a perfect listing.
           </p>
+          <div className="mt-3">
+            <EbayConnect />
+          </div>
         </header>
+
+        {/* eBay connected toast */}
+        {ebayConnectedToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-sm px-4 py-2 rounded-full shadow-lg z-50">
+            eBay account connected!
+          </div>
+        )}
 
         {/* Mode select */}
         {step === "mode-select" && (
@@ -347,6 +400,8 @@ export default function Home() {
               }}
               onRegenerate={analyse}
             />
+
+            <MarketInsights data={marketInsights} loading={loadingMarket} />
           </div>
         )}
 
