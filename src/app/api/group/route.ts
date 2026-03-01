@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildGroupPrompt } from "@/lib/prompts";
 import type { GroupResult } from "@/lib/types";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

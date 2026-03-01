@@ -6,9 +6,11 @@ import type { Photo } from "@/lib/types";
 interface Props {
   photos: Photo[];
   onPhotosChange: (photos: Photo[]) => void;
+  maxPx?: number;
+  quality?: number;
 }
 
-async function compressImage(file: File): Promise<string> {
+async function compressImage(file: File, maxPx: number, quality: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -19,7 +21,7 @@ async function compressImage(file: File): Promise<string> {
 
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1024;
+      const MAX = maxPx;
       let { width, height } = img;
 
       if (width > MAX || height > MAX) {
@@ -35,7 +37,7 @@ async function compressImage(file: File): Promise<string> {
       canvas.width = width;
       canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      resolve(canvas.toDataURL("image/jpeg", quality));
     };
 
     img.onerror = () => {
@@ -47,7 +49,7 @@ async function compressImage(file: File): Promise<string> {
   });
 }
 
-export default function PhotoUploader({ photos, onPhotosChange }: Props) {
+export default function PhotoUploader({ photos, onPhotosChange, maxPx = 1024, quality = 0.85 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -67,7 +69,7 @@ export default function PhotoUploader({ photos, onPhotosChange }: Props) {
           toAdd.map(async (file) => ({
             id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
             previewUrl: URL.createObjectURL(file),
-            compressed: await compressImage(file),
+            compressed: await compressImage(file, maxPx, quality),
           }))
         );
         onPhotosChange([...photos, ...newPhotos]);

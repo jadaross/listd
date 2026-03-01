@@ -354,8 +354,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Upload zone */}
-            <PhotoUploader photos={photos} onPhotosChange={setPhotos} />
+            {/* Upload zone — bulk uses lower compression to stay under Vercel's 4.5MB body limit */}
+            <PhotoUploader
+              photos={photos}
+              onPhotosChange={setPhotos}
+              maxPx={mode === "bulk" ? 800 : 1024}
+              quality={mode === "bulk" ? 0.75 : 0.85}
+            />
 
             {/* Error */}
             {error && (
