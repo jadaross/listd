@@ -2,18 +2,18 @@ import type { Listing, Platform, Tone } from "./types";
 
 const TONE_MAP: Record<Tone, string> = {
   casual:
-    "The description should be casual, friendly, and conversational — like how a real person sells on Depop or Vinted. Use natural language. You can mention styling ideas or how the item fits. Keep it genuine and relatable. No corporate speak.",
+    "The description should be casual, friendly, and conversational — like how a real person sells on Depop or Vinted. Use natural language. Keep it genuine and relatable. No corporate speak.",
   professional:
     "The description should be clean, factual, and professional. Lead with the most important details. No slang. Focus on measurements, condition, fabric, and fit. Concise.",
 };
 
 const PLATFORM_MAP: Record<Platform, string> = {
   depop:
-    'Format for Depop: include 8–10 relevant hashtags in the "hashtags" array. Titles should follow: Brand + Type + Key Feature (max 60 chars). Descriptions suit a younger, fashion-forward audience.',
+    'Format for Depop: include 8–10 relevant hashtags in the "hashtags" array with # prefix. Title: Brand + Type + Key Feature, max 60 chars, sentence case (capitalise first word only). Descriptions suit a younger, fashion-forward audience.',
   vinted:
-    'Format for Vinted: Vinted does not use hashtags — instead, put 8–10 relevant search keywords in the "hashtags" array that can be woven into the description. Titles should be descriptive and clear. Max 60 chars.',
+    'Format for Vinted: Title max 60 characters, sentence case (capitalise first word and proper nouns only — no title case). Description: 3–4 sentences max 80 words. MUST include the item size in the description. Each sentence goes on its own line with a blank line between them. Do NOT suggest outfit pairings, styling ideas, or what to wear it with — focus on fabric, condition, fit, and key details only. Put 8–10 search keywords (no # prefix) in the "hashtags" array.',
   ebay:
-    'Format for eBay: title max 80 characters (eBay allows more than Vinted/Depop). Include condition-specific language buyers search for. Description should be detailed and factual — include fabric, measurements if visible, condition detail, and care info. Use "hashtags" array for 5-8 eBay-style item specifics keywords (no # prefix) that match eBay search terms. 200-300 words in description is appropriate.',
+    'Format for eBay: title max 80 characters. Include condition-specific language buyers search for. Description should be detailed and factual — include fabric, measurements if visible, condition detail, and care info. Use "hashtags" array for 5-8 eBay-style item specifics keywords (no # prefix) that match eBay search terms. 150-200 words in description is appropriate.',
 };
 
 export function buildPrompt(
