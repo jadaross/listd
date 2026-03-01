@@ -79,6 +79,18 @@ export interface MarketInsights {
   intelligence: MarketIntelligence | null;
 }
 
+export interface PlatformListing {
+  title: string;
+  description: string;
+  hashtags: string[];
+}
+
+export interface FormattedListings {
+  vinted?: PlatformListing;
+  depop?: PlatformListing;
+  ebay?: PlatformListing;
+}
+
 export interface AnalysisResult {
   photo_analysis: PhotoAnalysis;
   tag_data: TagData;

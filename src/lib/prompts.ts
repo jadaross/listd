@@ -1,4 +1,4 @@
-import type { Platform, Tone } from "./types";
+import type { Listing, Platform, Tone } from "./types";
 
 const TONE_MAP: Record<Tone, string> = {
   casual:
@@ -105,6 +105,122 @@ LISTING:
 - main_category: "tops" | "bottoms" | "dresses" | "outerwear" | "knitwear" | "swimwear" | "underwear" | "sportswear" | "shoes" | "accessories" | "bags" | "other"
 - subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;
 }
+
+export function buildNeutralPrompt(tone: Tone, photoCount: number): string {
+  return `You are an expert clothing photographer and professional reselling assistant for secondhand fashion platforms.
+
+Analyse these ${photoCount} clothing photo(s) and return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON starting with { and ending with }.
+
+${TONE_MAP[tone]}
+
+Return exactly this JSON structure (fill in all fields):
+
+{
+  "photo_analysis": {
+    "scores": [
+      {
+        "index": 0,
+        "shot_type": "front view",
+        "quality_score": 4,
+        "issues": [],
+        "is_usable": true
+      }
+    ],
+    "missing_shots": [],
+    "suggestions": [],
+    "has_tag_photo": false,
+    "ready_to_list": true
+  },
+  "tag_data": {
+    "brand": null,
+    "size": null,
+    "size_system": null,
+    "fabric_composition": null,
+    "country_of_manufacture": null,
+    "care_instructions": null,
+    "rn_number": null,
+    "style_number": null,
+    "barcode_visible": false
+  },
+  "listing": {
+    "brand": "",
+    "clothing_type": "",
+    "colour_primary": "",
+    "colour_secondary": null,
+    "condition": "Good",
+    "size": "",
+    "material": "",
+    "title": "",
+    "description": "",
+    "hashtags": [],
+    "price_min": 0,
+    "price_max": 0,
+    "price_reasoning": "",
+    "gender": "women",
+    "main_category": "tops",
+    "subcategory": ""
+  }
+}
+
+Rules:
+
+PHOTO ANALYSIS:
+- shot_type options: "front view" | "back view" | "tag/label" | "detail shot" | "defect" | "measurement" | "styled/on-body" | "flat lay" | "unknown"
+- quality_score: 5=excellent (sharp, well-lit, clean background, full item), 4=good, 3=acceptable, 2=poor (suggest retake), 1=unusable
+- Check missing_shots against: front view, back view, care label/tag, detail shot, defect (if wear is visible), measurement
+- suggestions: specific, actionable advice ("Photograph the care label — buyers need fabric content to verify authenticity")
+- ready_to_list: true only if there are no missing critical shots and all scores are 3+
+
+TAG DATA:
+- Extract ALL readable text from any tag/label visible in any photo
+- rn_number: US FTC Registered Identification Number (format "RN XXXXX") — critical for vintage dating
+- size_system: "UK" | "EU" | "US" | "IT" | "Universal" | null
+- care_instructions: plain English summary of care symbols/text
+
+LISTING:
+- brand: from tag if visible, otherwise infer from logo/design, otherwise "Unknown"
+- condition: infer from visible wear, pilling, fading, stains. Be honest.
+- price_min/price_max: realistic GBP resale prices. Consider brand, condition, type, and typical secondhand market values. For luxury/designer, price higher. For fast fashion in good condition, price accordingly.
+- price_reasoning: one sentence explaining the price logic
+- title: max 70 characters, descriptive and search-friendly (brand + type + key feature)
+- description: 4–5 clear sentences, 80–100 words. Lead with the most important details. Factual and thorough.
+- hashtags: 8–10 general search keywords relevant across all resale platforms (no # prefix)
+- gender: "women" | "men" | "kids" | "unisex" — who this item is for
+- main_category: "tops" | "bottoms" | "dresses" | "outerwear" | "knitwear" | "swimwear" | "underwear" | "sportswear" | "shoes" | "accessories" | "bags" | "other"
+- subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;
+}
+
+export function buildFormatPrompt(platform: Platform, tone: Tone, listing: Listing): string {
+  return `You are a secondhand fashion listing specialist. Reformat the following clothing listing for ${PLATFORM_LABELS[platform]}.
+
+${PLATFORM_MAP[platform]}
+
+${TONE_MAP[tone]}
+
+Source listing (neutral format):
+${JSON.stringify(listing, null, 2)}
+
+Return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON:
+
+{
+  "title": "",
+  "description": "",
+  "hashtags": []
+}
+
+Rules:
+- title: adapt to platform requirements (max chars, format conventions)
+- description: rewrite for platform audience and length requirements
+- hashtags: format correctly for platform (with/without # prefix, count)
+- Keep all factual details accurate — only change style, length, and format
+- Do NOT invent new information`;
+}
+
+const PLATFORM_LABELS: Record<Platform, string> = {
+  depop: "Depop",
+  vinted: "Vinted",
+  ebay: "eBay",
+};
 
 export function buildGroupPrompt(imageCount: number): string {
   return `You are analysing ${imageCount} clothing photo(s). Group them by clothing item — photos of the same item go in the same group, different items go in separate groups.

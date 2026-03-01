@@ -5,8 +5,6 @@ import type { MarketInsights, MarketIntelligence, PlatformPriceData, Platform } 
 interface Props {
   data: MarketInsights | null;
   loading: boolean;
-  currentPlatform?: Platform;
-  onPlatformChange?: (p: Platform) => void;
 }
 
 function formatPrice(p: number | null | undefined, currency = "GBP"): string {
@@ -52,38 +50,23 @@ function LikelihoodPill({ likelihood }: { likelihood: MarketIntelligence["sell_l
 
 function RecommendationCard({
   intelligence,
-  currentPlatform,
-  onPlatformChange,
 }: {
   intelligence: MarketIntelligence;
-  currentPlatform?: Platform;
-  onPlatformChange?: (p: Platform) => void;
 }) {
   const colours = PLATFORM_COLOURS[intelligence.recommended_platform];
-  const isCurrentPlatform = currentPlatform === intelligence.recommended_platform;
 
   return (
     <div className={`rounded-xl px-4 py-3.5 ${colours.bg} border border-opacity-20`}>
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-bold uppercase tracking-wider ${colours.text}`}>
-            Best platform
-          </span>
-          <span className={`px-2.5 py-0.5 rounded-full text-white text-xs font-bold ${colours.badge}`}>
-            {PLATFORM_LABELS[intelligence.recommended_platform]}
-          </span>
-          <span className={`text-sm font-bold ${colours.text}`}>
-            List at {formatPrice(intelligence.recommended_price)}
-          </span>
-        </div>
-        {onPlatformChange && !isCurrentPlatform && (
-          <button
-            onClick={() => onPlatformChange(intelligence.recommended_platform)}
-            className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-full ${colours.badge} text-white hover:opacity-90 transition-opacity`}
-          >
-            Switch →
-          </button>
-        )}
+      <div className="flex items-center gap-2 flex-wrap mb-2">
+        <span className={`text-xs font-bold uppercase tracking-wider ${colours.text}`}>
+          Best platform
+        </span>
+        <span className={`px-2.5 py-0.5 rounded-full text-white text-xs font-bold ${colours.badge}`}>
+          {PLATFORM_LABELS[intelligence.recommended_platform]}
+        </span>
+        <span className={`text-sm font-bold ${colours.text}`}>
+          List at {formatPrice(intelligence.recommended_price)}
+        </span>
       </div>
       <div className="mb-2">
         <LikelihoodPill likelihood={intelligence.sell_likelihood} />
@@ -195,10 +178,56 @@ function PlatformRow({
   );
 }
 
-export default function MarketInsights({ data, loading, currentPlatform, onPlatformChange }: Props) {
+export default function MarketInsights({ data, loading }: Props) {
   if (!loading && !data) return null;
 
   const intelligence = data?.intelligence ?? null;
+
+  // Check if we got any real data at all
+  const hasAnyData =
+    data &&
+    ((data.ebay?.count ?? 0) > 0 ||
+      (data.vinted?.count ?? 0) > 0 ||
+      (data.depop?.count ?? 0) > 0);
+
+  // Show setup prompt if load finished but no data came back
+  if (!loading && data && !hasAnyData) {
+    return (
+      <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          Market insights
+        </p>
+        <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 space-y-1.5">
+          <p className="text-sm font-medium text-gray-700">Live pricing not configured</p>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Add the following to <code className="bg-gray-100 px-1 rounded">.env.local</code> to
+            see real market prices and platform recommendations:
+          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs font-mono text-gray-600">
+              SERPAPI_KEY=…{" "}
+              <span className="text-gray-400 font-sans">— Vinted &amp; Depop prices</span>
+            </p>
+            <p className="text-xs font-mono text-gray-600">
+              EBAY_CLIENT_ID / SECRET{" "}
+              <span className="text-gray-400 font-sans">— eBay live data</span>
+            </p>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            SerpAPI free tier: 100 searches/month.{" "}
+            <a
+              href="https://serpapi.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              serpapi.com
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
@@ -220,8 +249,6 @@ export default function MarketInsights({ data, loading, currentPlatform, onPlatf
         ) : intelligence ? (
           <RecommendationCard
             intelligence={intelligence}
-            currentPlatform={currentPlatform}
-            onPlatformChange={onPlatformChange}
           />
         ) : null}
       </div>

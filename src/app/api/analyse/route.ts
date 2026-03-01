@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { buildPrompt } from "@/lib/prompts";
+import { buildPrompt, buildNeutralPrompt } from "@/lib/prompts";
 import type { Platform, Tone } from "@/lib/types";
 
 export const runtime = "edge";
@@ -10,7 +10,7 @@ const client = new Anthropic({
 
 interface RequestBody {
   images: string[];
-  platform: Platform;
+  platform?: Platform; // optional — bulk mode still sends it; single mode omits for neutral prompt
   tone: Tone;
 }
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { images, platform = "vinted", tone = "casual" } = body;
+  const { images, platform, tone = "casual" } = body;
 
   if (!Array.isArray(images) || images.length === 0) {
     return Response.json({ error: "No images provided" }, { status: 400 });
@@ -52,7 +52,9 @@ export async function POST(request: Request) {
     },
   }));
 
-  const prompt = buildPrompt(platform, tone, images.length);
+  const prompt = platform
+    ? buildPrompt(platform, tone, images.length)
+    : buildNeutralPrompt(tone, images.length);
 
   try {
     const response = await client.messages.create({

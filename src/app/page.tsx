@@ -11,6 +11,7 @@ import EbayConnect from "@/components/EbayConnect";
 import MarketInsights from "@/components/MarketInsights";
 import type {
   AnalysisResult,
+  FormattedListings,
   Photo,
   Platform,
   Tone,
@@ -45,9 +46,11 @@ export default function Home() {
       return () => clearTimeout(t);
     }
   }, []);
+
   const [mode, setMode] = useState<Mode>("single");
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [platform, setPlatform] = useState<Platform>("vinted");
+  // Bulk mode still uses a platform selector — kept for bulk only
+  const [bulkPlatform, setBulkPlatform] = useState<Platform>("vinted");
   const [tone, setTone] = useState<Tone>("casual");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +58,34 @@ export default function Home() {
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
   const [marketInsights, setMarketInsights] = useState<MarketInsightsType | null>(null);
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [formattedListings, setFormattedListings] = useState<FormattedListings>({});
+  const [loadingFormats, setLoadingFormats] = useState<Set<Platform>>(new Set());
+  const [ebayListingUrl, setEbayListingUrl] = useState<string | null>(null);
+  const [loadingEbayPost, setLoadingEbayPost] = useState(false);
+
+  const formatListing = useCallback(async (platform: Platform) => {
+    if (!result || formattedListings[platform]) return;
+    setLoadingFormats((prev) => new Set([...prev, platform]));
+    try {
+      const res = await fetch("/api/format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listing: result.listing, platform, tone }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFormattedListings((prev) => ({ ...prev, [platform]: data }));
+      }
+    } catch {
+      // silent — user can retry by re-expanding the card
+    } finally {
+      setLoadingFormats((prev) => {
+        const s = new Set(prev);
+        s.delete(platform);
+        return s;
+      });
+    }
+  }, [result, formattedListings, tone]);
 
   const fetchMarket = useCallback((listing: AnalysisResult["listing"]) => {
     if (!listing.brand && !listing.subcategory) return;
@@ -75,16 +106,48 @@ export default function Home() {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: MarketInsightsType | null) => {
-        if (data) setMarketInsights(data);
+        if (data) {
+          setMarketInsights(data);
+          if (data.intelligence?.recommended_platform) {
+            formatListing(data.intelligence.recommended_platform);
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingMarket(false));
-  }, []);
+  }, [formatListing]);
+
+  const postToEbay = useCallback(async () => {
+    if (!result) return;
+    let ebayFormatted = formattedListings.ebay;
+    if (!ebayFormatted) {
+      await formatListing("ebay");
+      // formatListing updates state asynchronously — re-read from closure after await
+      // We'll need to trigger the post after state settles; handle below
+      return;
+    }
+    setLoadingEbayPost(true);
+    try {
+      const res = await fetch("/api/ebay/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listing: result.listing, formatted: ebayFormatted }),
+      });
+      const data = await res.json();
+      if (data.listingUrl) setEbayListingUrl(data.listingUrl);
+    } catch {
+      // silent failure — UI shows error state
+    } finally {
+      setLoadingEbayPost(false);
+    }
+  }, [result, formattedListings, formatListing]);
 
   const analyse = useCallback(async () => {
     if (!photos.length) return;
     setStep("loading");
     setError(null);
+    setFormattedListings({});
+    setEbayListingUrl(null);
 
     try {
       const res = await fetch("/api/analyse", {
@@ -92,8 +155,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           images: photos.map((p) => p.compressed),
-          platform,
           tone,
+          // no platform — neutral prompt for single mode
         }),
       });
 
@@ -110,7 +173,7 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setStep("upload");
     }
-  }, [photos, platform, tone, fetchMarket]);
+  }, [photos, tone, fetchMarket]);
 
   const groupPhotos = useCallback(async () => {
     if (!photos.length) return;
@@ -156,7 +219,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           images: groupPhotos.map((p) => p.compressed),
-          platform,
+          platform: bulkPlatform,
           tone,
         }),
       })
@@ -191,7 +254,7 @@ export default function Home() {
           );
         });
     });
-  }, [groups, photos, platform, tone]);
+  }, [groups, photos, bulkPlatform, tone]);
 
   const startOver = useCallback(() => {
     photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -203,6 +266,8 @@ export default function Home() {
     setBulkItems([]);
     setMarketInsights(null);
     setLoadingMarket(false);
+    setFormattedListings({});
+    setEbayListingUrl(null);
     setStep("mode-select");
   }, [photos]);
 
@@ -242,28 +307,30 @@ export default function Home() {
         {/* Upload step */}
         {step === "upload" && (
           <div className="space-y-4">
-            {/* Platform + Tone selectors */}
+            {/* Tone selector (single mode) + Platform + Tone (bulk mode) */}
             <div className="flex flex-wrap gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Platform
-                </span>
-                <div className="flex gap-1.5">
-                  {(["vinted", "depop", "ebay"] as Platform[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPlatform(p)}
-                      className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                        platform === p
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "bg-white border border-gray-200 text-gray-600 hover:border-indigo-300"
-                      }`}
-                    >
-                      {p === "vinted" ? "Vinted" : p === "depop" ? "Depop" : "eBay"}
-                    </button>
-                  ))}
+              {mode === "bulk" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Platform
+                  </span>
+                  <div className="flex gap-1.5">
+                    {(["vinted", "depop", "ebay"] as Platform[]).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setBulkPlatform(p)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          bulkPlatform === p
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "bg-white border border-gray-200 text-gray-600 hover:border-indigo-300"
+                        }`}
+                      >
+                        {p === "vinted" ? "Vinted" : p === "depop" ? "Depop" : "eBay"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -306,7 +373,7 @@ export default function Home() {
               {photos.length === 0
                 ? "Add photos to get started"
                 : mode === "single"
-                  ? `Generate ${platform === "vinted" ? "Vinted" : platform === "depop" ? "Depop" : "eBay"} listing →`
+                  ? "Analyse item →"
                   : `Identify items in ${photos.length} photo${photos.length !== 1 ? "s" : ""} →`}
             </button>
 
@@ -393,25 +460,20 @@ export default function Home() {
             <ListingOutput
               listing={result.listing}
               tagData={result.tag_data}
-              platform={platform}
               tone={tone}
-              onPlatformChange={(p) => {
-                setPlatform(p);
-              }}
-              onToneChange={(t) => {
-                setTone(t);
-              }}
-              onRegenerate={analyse}
+              formattedListings={formattedListings}
+              loadingFormats={loadingFormats}
+              recommendedPlatform={marketInsights?.intelligence?.recommended_platform}
+              marketInsights={marketInsights}
+              onFormatRequest={formatListing}
+              onPostToEbay={postToEbay}
+              loadingEbayPost={loadingEbayPost}
+              ebayListingUrl={ebayListingUrl}
             />
 
             <MarketInsights
               data={marketInsights}
               loading={loadingMarket}
-              currentPlatform={platform}
-              onPlatformChange={(p) => {
-                setPlatform(p);
-                analyse();
-              }}
             />
           </div>
         )}
@@ -440,7 +502,7 @@ export default function Home() {
 
             <BulkResults
               bulkItems={bulkItems}
-              platform={platform}
+              platform={bulkPlatform}
               tone={tone}
               onRegenerateAll={generateBulk}
             />
