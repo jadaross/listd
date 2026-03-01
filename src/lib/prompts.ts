@@ -12,6 +12,8 @@ const PLATFORM_MAP: Record<Platform, string> = {
     'Format for Depop: include 8–10 relevant hashtags in the "hashtags" array. Titles should follow: Brand + Type + Key Feature (max 60 chars). Descriptions suit a younger, fashion-forward audience.',
   vinted:
     'Format for Vinted: Vinted does not use hashtags — instead, put 8–10 relevant search keywords in the "hashtags" array that can be woven into the description. Titles should be descriptive and clear. Max 60 chars.',
+  ebay:
+    'Format for eBay: title max 80 characters (eBay allows more than Vinted/Depop). Include condition-specific language buyers search for. Description should be detailed and factual — include fabric, measurements if visible, condition detail, and care info. Use "hashtags" array for 5-8 eBay-style item specifics keywords (no # prefix) that match eBay search terms. 200-300 words in description is appropriate.',
 };
 
 export function buildPrompt(
@@ -96,9 +98,9 @@ LISTING:
 - condition: infer from visible wear, pilling, fading, stains. Be honest.
 - price_min/price_max: realistic GBP resale prices. Consider brand, condition, type, and typical secondhand market values. For luxury/designer, price higher. For fast fashion in good condition, price accordingly.
 - price_reasoning: one sentence explaining the price logic
-- title: max 60 characters
-- description: ${platform === 'depop' ? '3–4 short punchy sentences, max 60 words. Give it personality. No filler phrases.' : '4–5 clear sentences, max 80 words. Lead with the most important details. No waffle.'}
-- hashtags: 8–10 items (actual hashtag strings including # for Depop, keywords without # for Vinted)
+- title: ${platform === 'ebay' ? 'max 80 characters' : 'max 60 characters'}
+- description: ${platform === 'depop' ? '3–4 short punchy sentences, max 60 words. Give it personality. No filler phrases.' : platform === 'vinted' ? '4–5 clear sentences, max 80 words. Lead with the most important details. No waffle.' : '4–6 sentences, 150–250 words. Detailed and factual. Include fabric, visible measurements, condition specifics, care info.'}
+- hashtags: ${platform === 'depop' ? '8–10 actual hashtag strings including # prefix' : platform === 'vinted' ? '8–10 keywords without # for Vinted search' : '5–8 eBay-style item specifics keywords without # prefix'}
 - gender: "women" | "men" | "kids" | "unisex" — who this item is for
 - main_category: "tops" | "bottoms" | "dresses" | "outerwear" | "knitwear" | "swimwear" | "underwear" | "sportswear" | "shoes" | "accessories" | "bags" | "other"
 - subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;

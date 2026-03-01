@@ -68,6 +68,9 @@ export default function Home() {
         subcategory: listing.subcategory ?? listing.clothing_type,
         gender: listing.gender ?? "women",
         main_category: listing.main_category ?? "other",
+        condition: listing.condition,
+        price_min: listing.price_min,
+        price_max: listing.price_max,
       }),
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -246,7 +249,7 @@ export default function Home() {
                   Platform
                 </span>
                 <div className="flex gap-1.5">
-                  {(["vinted", "depop"] as Platform[]).map((p) => (
+                  {(["vinted", "depop", "ebay"] as Platform[]).map((p) => (
                     <button
                       key={p}
                       onClick={() => setPlatform(p)}
@@ -256,7 +259,7 @@ export default function Home() {
                           : "bg-white border border-gray-200 text-gray-600 hover:border-indigo-300"
                       }`}
                     >
-                      {p === "vinted" ? "Vinted" : "Depop"}
+                      {p === "vinted" ? "Vinted" : p === "depop" ? "Depop" : "eBay"}
                     </button>
                   ))}
                 </div>
@@ -303,7 +306,7 @@ export default function Home() {
               {photos.length === 0
                 ? "Add photos to get started"
                 : mode === "single"
-                  ? `Generate ${platform === "vinted" ? "Vinted" : "Depop"} listing →`
+                  ? `Generate ${platform === "vinted" ? "Vinted" : platform === "depop" ? "Depop" : "eBay"} listing →`
                   : `Identify items in ${photos.length} photo${photos.length !== 1 ? "s" : ""} →`}
             </button>
 
@@ -401,7 +404,15 @@ export default function Home() {
               onRegenerate={analyse}
             />
 
-            <MarketInsights data={marketInsights} loading={loadingMarket} />
+            <MarketInsights
+              data={marketInsights}
+              loading={loadingMarket}
+              currentPlatform={platform}
+              onPlatformChange={(p) => {
+                setPlatform(p);
+                analyse();
+              }}
+            />
           </div>
         )}
 

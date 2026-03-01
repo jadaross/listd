@@ -59,6 +59,16 @@ export interface PlatformPriceData {
   max: number | null;
   count: number;
   currency: string;
+  sold_median?: number | null;
+  sold_count?: number | null;
+}
+
+export interface MarketIntelligence {
+  recommended_platform: Platform;
+  recommended_price: number;
+  sell_likelihood: "high" | "medium" | "low";
+  platform_reasoning: string;
+  key_insight: string;
 }
 
 export interface MarketInsights {
@@ -66,6 +76,7 @@ export interface MarketInsights {
   vinted: PlatformPriceData;
   depop: PlatformPriceData;
   query: string;
+  intelligence: MarketIntelligence | null;
 }
 
 export interface AnalysisResult {
@@ -74,7 +85,7 @@ export interface AnalysisResult {
   listing: Listing;
 }
 
-export type Platform = "vinted" | "depop";
+export type Platform = "vinted" | "depop" | "ebay";
 export type Tone = "casual" | "professional";
 export type Mode = "single" | "bulk";
 

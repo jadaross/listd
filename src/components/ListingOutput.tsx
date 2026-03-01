@@ -25,7 +25,10 @@ export default function ListingOutput({
   onRegenerate,
 }: Props) {
   const hashtagString = listing.hashtags
-    .map((h) => (platform === "depop" && !h.startsWith("#") ? `#${h}` : h))
+    .map((h) => {
+      if (platform === "depop") return h.startsWith("#") ? h : `#${h}`;
+      return h.replace(/^#/, "");
+    })
     .join(" ");
 
   const detailsText = [
@@ -50,7 +53,7 @@ export default function ListingOutput({
               Settings
             </span>
 
-            {(["vinted", "depop"] as Platform[]).map((p) => (
+            {(["vinted", "depop", "ebay"] as Platform[]).map((p) => (
               <button
                 key={p}
                 onClick={() => onPlatformChange?.(p)}
@@ -60,7 +63,7 @@ export default function ListingOutput({
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {p === "vinted" ? "Vinted" : "Depop"}
+                {p === "vinted" ? "Vinted" : p === "depop" ? "Depop" : "eBay"}
               </button>
             ))}
 
@@ -190,10 +193,10 @@ export default function ListingOutput({
         })()
       )}
 
-      {/* Hashtags / Keywords */}
+      {/* Hashtags / Keywords / Item Specifics */}
       {listing.hashtags.length > 0 && (
         <ListingCard
-          label={platform === "depop" ? "Hashtags" : "Keywords"}
+          label={platform === "depop" ? "Hashtags" : platform === "ebay" ? "Search Keywords" : "Keywords"}
           copyText={hashtagString}
         >
           {platform === "depop" ? (
@@ -210,10 +213,24 @@ export default function ListingOutput({
                 );
               })}
             </div>
+          ) : platform === "ebay" ? (
+            <div className="flex flex-wrap gap-2">
+              {listing.hashtags.map((tag) => {
+                const display = tag.replace(/^#/, "");
+                return (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-1 bg-yellow-50 text-yellow-700 text-xs font-medium rounded-full border border-yellow-100"
+                  >
+                    {display}
+                  </span>
+                );
+              })}
+            </div>
           ) : (
             <div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                {listing.hashtags.join(", ")}
+                {listing.hashtags.map((h) => h.replace(/^#/, "")).join(", ")}
               </p>
               <p className="text-xs text-gray-400 mt-2">
                 Vinted doesn&apos;t use hashtags — weave these keywords into
