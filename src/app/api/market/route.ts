@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getProdAppToken } from "@/lib/ebay-auth";
 import type { MarketInsights, MarketIntelligence, PlatformPriceData } from "@/lib/types";
-import type { Gender, MainCategory } from "@/lib/categories";
-import { getCategories } from "@/lib/categories";
 
 export const runtime = "nodejs";
 
 interface MarketRequest {
   brand: string;
   subcategory: string;
-  gender: Gender;
-  main_category: MainCategory;
+  gender?: string;
+  main_category?: string;
   condition?: string;
   price_min?: number;
   price_max?: number;
@@ -30,100 +27,10 @@ function emptyPlatform(currency = "GBP"): PlatformPriceData {
   return { median: null, min: null, max: null, count: 0, currency };
 }
 
-async function fetchEbayPrices(
-  brand: string,
-  subcategory: string,
-  gender: Gender,
-  main_category: MainCategory
-): Promise<PlatformPriceData> {
-  try {
-    const token = await getProdAppToken();
-    const cats = getCategories(gender, main_category);
-    const q = encodeURIComponent(`${brand} ${subcategory}`.trim());
-    const url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${q}&category_ids=${cats.ebay.id}&limit=20&filter=buyingOptions:{FIXED_PRICE}`;
-
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) return emptyPlatform();
-
-    const data = await res.json();
-    const items: { price?: { value?: string; currency?: string } }[] =
-      data.itemSummaries ?? [];
-
-    const prices = items
-      .map((item) => parseFloat(item.price?.value ?? ""))
-      .filter((p) => !isNaN(p) && p > 0);
-
-    if (!prices.length) return emptyPlatform();
-
-    const currency = items[0]?.price?.currency ?? "GBP";
-    return {
-      median: median(prices),
-      min: Math.min(...prices),
-      max: Math.max(...prices),
-      count: prices.length,
-      currency,
-    };
-  } catch {
-    return emptyPlatform();
-  }
-}
-
-async function fetchEbaySoldPrices(
-  brand: string,
-  subcategory: string,
-  gender: Gender,
-  main_category: MainCategory
-): Promise<PlatformPriceData> {
-  try {
-    const token = await getProdAppToken();
-    const cats = getCategories(gender, main_category);
-    const q = encodeURIComponent(`${brand} ${subcategory}`.trim());
-    const url = `https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search?q=${q}&category_ids=${cats.ebay.id}&limit=20`;
-
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) return emptyPlatform();
-
-    const data = await res.json();
-    const items: { lastSoldPrice?: { value?: string; currency?: string } }[] =
-      data.itemSales ?? [];
-
-    const prices = items
-      .map((item) => parseFloat(item.lastSoldPrice?.value ?? ""))
-      .filter((p) => !isNaN(p) && p > 0);
-
-    if (!prices.length) return emptyPlatform();
-
-    const currency = items[0]?.lastSoldPrice?.currency ?? "GBP";
-    return {
-      median: median(prices),
-      min: Math.min(...prices),
-      max: Math.max(...prices),
-      count: prices.length,
-      currency,
-    };
-  } catch {
-    return emptyPlatform();
-  }
-}
-
 async function fetchSerpApiPrices(
   brand: string,
   subcategory: string,
-  site: "vinted.co.uk" | "depop.com"
+  site: "vinted.co.uk" | "depop.com" | "ebay.co.uk"
 ): Promise<PlatformPriceData> {
   const serpApiKey = process.env.SERPAPI_KEY;
   if (!serpApiKey) return emptyPlatform();
@@ -206,8 +113,7 @@ async function synthesiseInsights(
   condition: string,
   price_min: number,
   price_max: number,
-  ebayActive: PlatformPriceData,
-  ebaySold: PlatformPriceData,
+  ebay: PlatformPriceData,
   vinted: PlatformPriceData,
   depop: PlatformPriceData,
 ): Promise<MarketIntelligence | null> {
@@ -223,8 +129,7 @@ Item: ${brand} ${subcategory}, condition: ${condition}
 AI suggested price: £${price_min}–£${price_max}
 
 Live market data:
-- eBay active listings: ${ebayActive.count} items, median ${fmt(ebayActive.median)}, range ${fmt(ebayActive.min)}–${fmt(ebayActive.max)}
-- eBay recently sold: ${ebaySold.count} items, median sold price ${fmt(ebaySold.median)}
+- eBay active listings: ${ebay.count} items, median ${fmt(ebay.median)}, range ${fmt(ebay.min)}–${fmt(ebay.max)}
 - Vinted active: ${vinted.count} items, median ${fmt(vinted.median)}
 - Depop active: ${depop.count} items, median ${fmt(depop.median)}
 
@@ -272,8 +177,6 @@ export async function POST(req: NextRequest) {
     const {
       brand = "",
       subcategory = "",
-      gender = "women",
-      main_category = "other",
       condition = "Good",
       price_min = 0,
       price_max = 0,
@@ -281,18 +184,11 @@ export async function POST(req: NextRequest) {
 
     const query = `${brand} ${subcategory}`.trim();
 
-    const [ebayActive, ebaySold, vinted, depop] = await Promise.all([
-      fetchEbayPrices(brand, subcategory, gender, main_category),
-      fetchEbaySoldPrices(brand, subcategory, gender, main_category),
+    const [ebay, vinted, depop] = await Promise.all([
+      fetchSerpApiPrices(brand, subcategory, "ebay.co.uk"),
       fetchSerpApiPrices(brand, subcategory, "vinted.co.uk"),
       fetchSerpApiPrices(brand, subcategory, "depop.com"),
     ]);
-
-    const ebay: PlatformPriceData = {
-      ...ebayActive,
-      sold_median: ebaySold.median,
-      sold_count: ebaySold.count,
-    };
 
     const intelligence = await synthesiseInsights(
       brand,
@@ -300,8 +196,7 @@ export async function POST(req: NextRequest) {
       condition,
       price_min,
       price_max,
-      ebayActive,
-      ebaySold,
+      ebay,
       vinted,
       depop,
     );
