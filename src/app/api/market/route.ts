@@ -27,10 +27,63 @@ function emptyPlatform(currency = "GBP"): PlatformPriceData {
   return { median: null, min: null, max: null, count: 0, currency };
 }
 
+async function fetchEbayPrices(
+  brand: string,
+  subcategory: string
+): Promise<PlatformPriceData> {
+  const serpApiKey = process.env.SERPAPI_KEY;
+  if (!serpApiKey) return emptyPlatform();
+
+  try {
+    const q = encodeURIComponent(`${brand} ${subcategory}`);
+    const url = `https://serpapi.com/search.json?engine=ebay&ebay_domain=ebay.co.uk&_nkw=${q}&api_key=${serpApiKey}&LH_ItemCondition=3000`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8_000);
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (!res.ok) return emptyPlatform();
+
+    const data = await res.json();
+    const prices: number[] = [];
+
+    for (const item of (data.organic_results ?? []) as {
+      price?: { extracted?: number; from?: { extracted?: number }; to?: { extracted?: number } };
+    }[]) {
+      const single = item.price?.extracted;
+      if (typeof single === "number" && single >= 3 && single < 5000) {
+        prices.push(single);
+      } else {
+        const from = item.price?.from?.extracted;
+        const to = item.price?.to?.extracted;
+        if (typeof from === "number" && typeof to === "number") {
+          const mid = (from + to) / 2;
+          if (mid >= 3 && mid < 5000) prices.push(mid);
+        }
+      }
+    }
+
+    if (!prices.length) return emptyPlatform();
+    return {
+      median: median(prices),
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      count: prices.length,
+      currency: "GBP",
+    };
+  } catch {
+    return emptyPlatform();
+  }
+}
+
 async function fetchSerpApiPrices(
   brand: string,
   subcategory: string,
-  site: "vinted.co.uk" | "depop.com" | "ebay.co.uk"
+  site: "vinted.co.uk" | "depop.com"
 ): Promise<PlatformPriceData> {
   const serpApiKey = process.env.SERPAPI_KEY;
   if (!serpApiKey) return emptyPlatform();
@@ -199,7 +252,7 @@ export async function POST(req: NextRequest) {
     const query = `${brand} ${subcategory}`.trim();
 
     const [ebay, vinted, depop] = await Promise.all([
-      fetchSerpApiPrices(brand, subcategory, "ebay.co.uk"),
+      fetchEbayPrices(brand, subcategory),
       fetchSerpApiPrices(brand, subcategory, "vinted.co.uk"),
       fetchSerpApiPrices(brand, subcategory, "depop.com"),
     ]);

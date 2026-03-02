@@ -6,6 +6,7 @@ import PhotoFeedback from "@/components/PhotoFeedback";
 import ListingOutput from "@/components/ListingOutput";
 import EbayConnect from "@/components/EbayConnect";
 import MarketInsights from "@/components/MarketInsights";
+import CurrencySelector from "@/components/CurrencySelector";
 import type {
   AnalysisResult,
   FormattedListings,
@@ -14,12 +15,26 @@ import type {
   Tone,
   MarketInsights as MarketInsightsType,
 } from "@/lib/types";
+import { type Currency } from "@/lib/currency";
 
 type AppStep = "upload" | "loading" | "results";
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>("upload");
   const [ebayConnectedToast, setEbayConnectedToast] = useState(false);
+  const [currency, setCurrency] = useState<Currency>("GBP");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("listd_currency") as Currency | null;
+    if (saved && ["GBP", "EUR", "USD", "AUD"].includes(saved)) {
+      setCurrency(saved);
+    }
+  }, []);
+
+  const handleCurrencyChange = useCallback((c: Currency) => {
+    setCurrency(c);
+    localStorage.setItem("listd_currency", c);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -176,8 +191,9 @@ export default function Home() {
           <p className="text-gray-500 text-sm mt-1">
             Upload your clothes. Get a perfect listing.
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <EbayConnect />
+            <CurrencySelector currency={currency} onChange={handleCurrencyChange} />
           </div>
         </header>
 
@@ -277,6 +293,7 @@ export default function Home() {
             <MarketInsights
               data={marketInsights}
               loading={loadingMarket}
+              currency={currency}
             />
 
             <PhotoFeedback analysis={result.photo_analysis} />
@@ -285,6 +302,7 @@ export default function Home() {
               listing={result.listing}
               tagData={result.tag_data}
               tone={tone}
+              currency={currency}
               formattedListings={formattedListings}
               loadingFormats={loadingFormats}
               recommendedPlatform={marketInsights?.intelligence?.recommended_platform}

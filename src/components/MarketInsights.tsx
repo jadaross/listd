@@ -1,16 +1,12 @@
 "use client";
 
 import type { MarketInsights, MarketIntelligence, PlatformPriceData, Platform } from "@/lib/types";
+import { type Currency, fmtPrice } from "@/lib/currency";
 
 interface Props {
   data: MarketInsights | null;
   loading: boolean;
-}
-
-function formatPrice(p: number | null | undefined, currency = "GBP"): string {
-  if (p === null || p === undefined) return "—";
-  const symbol = currency === "GBP" ? "£" : currency;
-  return `${symbol}${p.toFixed(2).replace(/\.00$/, "")}`;
+  currency: Currency;
 }
 
 const PLATFORM_COLOURS: Record<Platform, { bg: string; text: string; badge: string }> = {
@@ -50,8 +46,10 @@ function LikelihoodPill({ likelihood }: { likelihood: MarketIntelligence["sell_l
 
 function RecommendationCard({
   intelligence,
+  currency,
 }: {
   intelligence: MarketIntelligence;
+  currency: Currency;
 }) {
   const colours = PLATFORM_COLOURS[intelligence.recommended_platform];
 
@@ -65,7 +63,7 @@ function RecommendationCard({
           {PLATFORM_LABELS[intelligence.recommended_platform]}
         </span>
         <span className={`text-sm font-bold ${colours.text}`}>
-          List at {formatPrice(intelligence.recommended_price)}
+          List at {fmtPrice(intelligence.recommended_price, currency)}
         </span>
       </div>
       <div className="mb-2">
@@ -93,7 +91,7 @@ function SkeletonCard() {
   );
 }
 
-function EbayRow({ data, loading }: { data: PlatformPriceData | undefined; loading: boolean }) {
+function EbayRow({ data, loading, currency }: { data: PlatformPriceData | undefined; loading: boolean; currency: Currency }) {
   if (loading) {
     return (
       <div className="flex items-start justify-between py-2.5 border-b border-gray-100">
@@ -116,7 +114,7 @@ function EbayRow({ data, loading }: { data: PlatformPriceData | undefined; loadi
         {hasSold ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-xs font-semibold text-emerald-700">
-              {formatPrice(data!.sold_median, data!.currency)} sold
+              {fmtPrice(data!.sold_median, currency)} sold
             </span>
             <span className="text-xs text-gray-400">({data!.sold_count} comps)</span>
           </div>
@@ -124,7 +122,7 @@ function EbayRow({ data, loading }: { data: PlatformPriceData | undefined; loadi
         {hasActive ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-semibold text-gray-900">
-              {formatPrice(data!.median, data!.currency)} active
+              {fmtPrice(data!.median, currency)} active
             </span>
             <span className="text-xs text-gray-400">({data!.count} listed)</span>
           </div>
@@ -140,10 +138,12 @@ function PlatformRow({
   label,
   data,
   loading,
+  currency,
 }: {
   label: string;
   data: PlatformPriceData | undefined;
   loading: boolean;
+  currency: Currency;
 }) {
   if (loading) {
     return (
@@ -165,7 +165,7 @@ function PlatformRow({
       {hasData ? (
         <div className="flex items-baseline gap-2 text-right">
           <span className="text-sm font-semibold text-gray-900">
-            {formatPrice(data.median, data.currency)}
+            {fmtPrice(data.median, currency)}
           </span>
           <span className="text-xs text-gray-400">
             <span className="text-gray-300">({data.count} listings)</span>
@@ -178,7 +178,7 @@ function PlatformRow({
   );
 }
 
-export default function MarketInsights({ data, loading }: Props) {
+export default function MarketInsights({ data, loading, currency }: Props) {
   if (!loading && !data) return null;
 
   const intelligence = data?.intelligence ?? null;
@@ -247,9 +247,7 @@ export default function MarketInsights({ data, loading }: Props) {
         {loading && !intelligence ? (
           <SkeletonCard />
         ) : intelligence ? (
-          <RecommendationCard
-            intelligence={intelligence}
-          />
+          <RecommendationCard intelligence={intelligence} currency={currency} />
         ) : null}
       </div>
 
@@ -271,9 +269,9 @@ export default function MarketInsights({ data, loading }: Props) {
         Platform data
       </p>
       <div>
-        <EbayRow data={data?.ebay} loading={loading} />
-        <PlatformRow label="Vinted" data={data?.vinted} loading={loading} />
-        <PlatformRow label="Depop" data={data?.depop} loading={loading} />
+        <EbayRow data={data?.ebay} loading={loading} currency={currency} />
+        <PlatformRow label="Vinted" data={data?.vinted} loading={loading} currency={currency} />
+        <PlatformRow label="Depop" data={data?.depop} loading={loading} currency={currency} />
       </div>
     </div>
   );

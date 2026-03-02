@@ -13,11 +13,13 @@ import type {
 } from "@/lib/types";
 import { getCategories } from "@/lib/categories";
 import type { Gender, MainCategory } from "@/lib/categories";
+import { type Currency, fmtPrice, fmtRange } from "@/lib/currency";
 
 interface Props {
   listing: Listing;
   tagData: TagData;
   tone: Tone;
+  currency: Currency;
   formattedListings: FormattedListings;
   loadingFormats: Set<Platform>;
   recommendedPlatform?: Platform;
@@ -60,13 +62,14 @@ const PLATFORM_ORDER: Platform[] = ["depop", "vinted", "ebay"];
 function getPlatformPrice(
   platform: Platform,
   listing: Listing,
-  insights: MarketInsights | null | undefined
+  insights: MarketInsights | null | undefined,
+  currency: Currency
 ): { display: string; sub: string | null } {
   const intelligence = insights?.intelligence;
   // Recommended platform gets the AI-recommended price
   if (intelligence?.recommended_platform === platform) {
     return {
-      display: `£${intelligence.recommended_price}`,
+      display: fmtPrice(intelligence.recommended_price, currency),
       sub: "recommended price",
     };
   }
@@ -77,11 +80,11 @@ function getPlatformPrice(
       platform === "ebay" && (data.sold_count ?? 0) > 0 && data.sold_median !== null
         ? `${data.sold_count} sold comps`
         : `${data.count} listings`;
-    return { display: `£${Math.round(data.median)}`, sub: label };
+    return { display: fmtPrice(data.median, currency), sub: label };
   }
   // Fallback to neutral listing price
   return {
-    display: `£${listing.price_min}–£${listing.price_max}`,
+    display: fmtRange(listing.price_min, listing.price_max, currency),
     sub: null,
   };
 }
@@ -90,6 +93,7 @@ export default function ListingOutput({
   listing,
   tagData,
   tone: _tone,
+  currency,
   formattedListings,
   loadingFormats,
   recommendedPlatform,
@@ -164,7 +168,7 @@ export default function ListingOutput({
           isRecommended={platform === recommendedPlatform}
           isExpanded={expandedPlatform === platform}
           onToggle={() => handleExpand(platform)}
-          priceInfo={getPlatformPrice(platform, listing, marketInsights)}
+          priceInfo={getPlatformPrice(platform, listing, marketInsights, currency)}
           priceReasoning={listing.price_reasoning}
           category={categoryForPlatform[platform]}
           subcategory={listing.subcategory}
