@@ -39,7 +39,14 @@ async function fetchSerpApiPrices(
     const q = encodeURIComponent(`${brand} ${subcategory} site:${site}`);
     const url = `https://serpapi.com/search.json?engine=google&q=${q}&gl=gb&hl=en&api_key=${serpApiKey}&num=20`;
 
-    const res = await fetch(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8_000);
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!res.ok) return emptyPlatform();
 
     const data = await res.json();

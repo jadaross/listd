@@ -213,7 +213,7 @@ export default function Home() {
               </div>
             </div>
 
-            <PhotoUploader photos={photos} onPhotosChange={setPhotos} />
+            <PhotoUploader photos={photos} onPhotosChange={setPhotos} maxPx={800} quality={0.8} />
 
             {error && (
               <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-600">
