@@ -67,7 +67,8 @@ async function fetchSerpApiPrices(
     }[] = data.organic_results ?? [];
 
     const prices: number[] = [];
-    const poundRegex = /£\s*(\d+(?:\.\d{1,2})?)/g;
+    // Negative lookahead skips Vinted's "£18.68. £20.31incl." buyer-protection fee prices
+    const poundRegex = /£\s*(\d+(?:\.\d{1,2})?)(?!\s*incl)/g;
 
     for (const result of organicResults) {
       // Check structured detected_extensions first (most reliable)
@@ -75,22 +76,25 @@ async function fetchSerpApiPrices(
       const bottomDetected = result.rich_snippet?.bottom?.detected_extensions ?? {};
       for (const val of [...Object.values(topDetected), ...Object.values(bottomDetected)]) {
         const n = typeof val === "number" ? val : parseFloat(String(val));
-        if (!isNaN(n) && n > 0 && n < 5000) {
+        if (!isNaN(n) && n >= 4 && n < 5000) {
           prices.push(n);
         }
       }
 
-      // Also search text: title + snippet + extensions
+      // Search text: title + snippet + extensions
+      // Strip "from £X.XX" patterns first (postage costs, not item prices)
       const extensions = [
         ...(result.rich_snippet?.top?.extensions ?? []),
         ...(result.rich_snippet?.bottom?.extensions ?? []),
       ];
-      const textToSearch = [result.title ?? "", result.snippet ?? "", ...extensions].join(" ");
+      const rawText = [result.title ?? "", result.snippet ?? "", ...extensions].join(" ");
+      const textToSearch = rawText.replace(/\bfrom\s+£\s*\d+(?:\.\d{1,2})?/gi, "");
       poundRegex.lastIndex = 0;
       let match: RegExpExecArray | null;
       while ((match = poundRegex.exec(textToSearch)) !== null) {
         const price = parseFloat(match[1]);
-        if (!isNaN(price) && price > 0 && price < 5000) {
+        // Minimum £4 to exclude fees/postage that slipped through
+        if (!isNaN(price) && price >= 4 && price < 5000) {
           prices.push(price);
         }
       }
@@ -150,11 +154,11 @@ Return ONLY valid JSON:
 }
 
 Rules:
-- recommended_price: a specific number (not a range) based on sold comps if available, else active listings
-- sell_likelihood: high if there are sold comps and competition is low; low if market is saturated or no demand signal
-- platform_reasoning: cite actual numbers ("Depop median is £32 vs £22 on Vinted")
-- key_insight: something genuinely useful ("Only 8 of 23 eBay listings have sold — supply exceeds demand")
-- If a platform has no data (count=0), do not recommend it
+- recommended_platform: ALWAYS pick one of "vinted", "depop", "ebay" — never return null. Prefer platforms with data; if all are empty, use the AI suggested price and general knowledge to pick.
+- recommended_price: a specific number based on market data if available, otherwise use the midpoint of the AI suggested price range. Never return null or 0.
+- sell_likelihood: "high" if demand signals are strong or market is active; "medium" if uncertain; "low" if oversupplied or no demand signal
+- platform_reasoning: cite actual numbers ("Depop median is £32 vs £22 on Vinted"); if no data, explain why you chose the platform
+- key_insight: something genuinely useful; if data is sparse, give advice about which platform suits this type of item
 - Return ONLY the JSON object, no markdown fences, no explanation`;
 
     const message = await client.messages.create({
@@ -168,9 +172,12 @@ Rules:
     if (!jsonMatch) return null;
 
     const parsed = JSON.parse(jsonMatch[0]) as MarketIntelligence;
-    // Validate required fields
-    if (!parsed.recommended_platform || !parsed.recommended_price || !parsed.sell_likelihood) {
+    // Only require platform and likelihood — price defaults to midpoint if missing
+    if (!parsed.recommended_platform || !parsed.sell_likelihood) {
       return null;
+    }
+    if (!parsed.recommended_price) {
+      parsed.recommended_price = Math.round((price_min + price_max) / 2);
     }
     return parsed;
   } catch {
