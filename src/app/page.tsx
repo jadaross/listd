@@ -274,6 +274,11 @@ export default function Home() {
               </button>
             </div>
 
+            <MarketInsights
+              data={marketInsights}
+              loading={loadingMarket}
+            />
+
             <PhotoFeedback analysis={result.photo_analysis} />
 
             <ListingOutput
@@ -288,11 +293,6 @@ export default function Home() {
               onPostToEbay={postToEbay}
               loadingEbayPost={loadingEbayPost}
               ebayListingUrl={ebayListingUrl}
-            />
-
-            <MarketInsights
-              data={marketInsights}
-              loading={loadingMarket}
             />
           </div>
         )}

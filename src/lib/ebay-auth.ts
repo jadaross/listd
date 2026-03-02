@@ -38,6 +38,47 @@ export async function getAppToken(): Promise<string> {
   return _appToken;
 }
 
+// Separate cache for production market-lookup token (always hits production API)
+let _prodAppToken: string | null = null;
+let _prodAppTokenExpiresAt = 0;
+
+/**
+ * Returns a client-credentials token from the *production* eBay API, regardless of
+ * EBAY_ENVIRONMENT.  Uses EBAY_PROD_CLIENT_ID / EBAY_PROD_CLIENT_SECRET when set,
+ * falling back to EBAY_CLIENT_ID / EBAY_CLIENT_SECRET.
+ * Use this for Browse API market-data lookups which must hit production.
+ */
+export async function getProdAppToken(): Promise<string> {
+  const now = Date.now();
+  if (_prodAppToken && now < _prodAppTokenExpiresAt - 60_000) {
+    return _prodAppToken;
+  }
+
+  const clientId = process.env.EBAY_PROD_CLIENT_ID || process.env.EBAY_CLIENT_ID;
+  const clientSecret = process.env.EBAY_PROD_CLIENT_SECRET || process.env.EBAY_CLIENT_SECRET;
+  const credentials = `${clientId}:${clientSecret}`;
+  const basic = Buffer.from(credentials).toString("base64");
+
+  const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${basic}`,
+    },
+    body: "grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`eBay prod app token fetch failed: ${text}`);
+  }
+
+  const data = (await res.json()) as { access_token: string; expires_in: number };
+  _prodAppToken = data.access_token;
+  _prodAppTokenExpiresAt = now + data.expires_in * 1000;
+  return _prodAppToken;
+}
+
 const isSandbox = process.env.EBAY_ENVIRONMENT !== "production";
 
 export const EBAY_BASE_URL = isSandbox

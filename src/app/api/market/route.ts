@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getAppToken } from "@/lib/ebay-auth";
+import { getProdAppToken } from "@/lib/ebay-auth";
 import type { MarketInsights, MarketIntelligence, PlatformPriceData } from "@/lib/types";
 import type { Gender, MainCategory } from "@/lib/categories";
 import { getCategories } from "@/lib/categories";
@@ -37,12 +37,10 @@ async function fetchEbayPrices(
   main_category: MainCategory
 ): Promise<PlatformPriceData> {
   try {
-    const token = await getAppToken();
-    const isSandbox = process.env.EBAY_ENVIRONMENT !== "production";
-    const apiBase = isSandbox ? "https://api.sandbox.ebay.com" : "https://api.ebay.com";
+    const token = await getProdAppToken();
     const cats = getCategories(gender, main_category);
     const q = encodeURIComponent(`${brand} ${subcategory}`.trim());
-    const url = `${apiBase}/buy/browse/v1/item_summary/search?q=${q}&category_ids=${cats.ebay.id}&limit=20&filter=buyingOptions:{FIXED_PRICE}`;
+    const url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${q}&category_ids=${cats.ebay.id}&limit=20&filter=buyingOptions:{FIXED_PRICE}`;
 
     const res = await fetch(url, {
       headers: {
@@ -84,12 +82,10 @@ async function fetchEbaySoldPrices(
   main_category: MainCategory
 ): Promise<PlatformPriceData> {
   try {
-    const token = await getAppToken();
-    // Marketplace Insights API is production-only (v1_beta)
-    const apiBase = "https://api.ebay.com";
+    const token = await getProdAppToken();
     const cats = getCategories(gender, main_category);
     const q = encodeURIComponent(`${brand} ${subcategory}`.trim());
-    const url = `${apiBase}/buy/marketplace_insights/v1_beta/item_sales/search?q=${q}&category_ids=${cats.ebay.id}&limit=20`;
+    const url = `https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search?q=${q}&category_ids=${cats.ebay.id}&limit=20`;
 
     const res = await fetch(url, {
       headers: {
@@ -141,23 +137,42 @@ async function fetchSerpApiPrices(
 
     const data = await res.json();
     const organicResults: {
-      rich_snippet?: {
-        top?: { extensions?: string[] };
-        bottom?: { extensions?: string[] };
-      };
+      title?: string;
       snippet?: string;
+      rich_snippet?: {
+        top?: {
+          extensions?: string[];
+          detected_extensions?: Record<string, number | string>;
+        };
+        bottom?: {
+          extensions?: string[];
+          detected_extensions?: Record<string, number | string>;
+        };
+      };
+      price?: string;
     }[] = data.organic_results ?? [];
 
     const prices: number[] = [];
     const poundRegex = /£\s*(\d+(?:\.\d{1,2})?)/g;
 
     for (const result of organicResults) {
+      // Check structured detected_extensions first (most reliable)
+      const topDetected = result.rich_snippet?.top?.detected_extensions ?? {};
+      const bottomDetected = result.rich_snippet?.bottom?.detected_extensions ?? {};
+      for (const val of [...Object.values(topDetected), ...Object.values(bottomDetected)]) {
+        const n = typeof val === "number" ? val : parseFloat(String(val));
+        if (!isNaN(n) && n > 0 && n < 5000) {
+          prices.push(n);
+        }
+      }
+
+      // Also search text: title + snippet + extensions
       const extensions = [
         ...(result.rich_snippet?.top?.extensions ?? []),
         ...(result.rich_snippet?.bottom?.extensions ?? []),
       ];
-
-      const textToSearch = [result.snippet ?? "", ...extensions].join(" ");
+      const textToSearch = [result.title ?? "", result.snippet ?? "", ...extensions].join(" ");
+      poundRegex.lastIndex = 0;
       let match: RegExpExecArray | null;
       while ((match = poundRegex.exec(textToSearch)) !== null) {
         const price = parseFloat(match[1]);
