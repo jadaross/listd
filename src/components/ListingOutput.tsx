@@ -89,6 +89,27 @@ function getPlatformPrice(
   };
 }
 
+function getPlatformPriceReasoning(
+  platform: Platform,
+  listing: Listing,
+  insights: MarketInsights | null | undefined,
+  currency: Currency
+): string {
+  const intelligence = insights?.intelligence;
+  if (intelligence?.recommended_platform === platform) {
+    return intelligence.platform_reasoning;
+  }
+  const data = insights?.[platform];
+  if (data && data.count > 0 && data.median !== null) {
+    if (platform === "ebay" && (data.sold_count ?? 0) > 0 && data.sold_median !== null) {
+      return `Based on ${data.sold_count} recent sold listings on eBay, the median sold price is ${fmtPrice(data.sold_median, currency)}. Buyers typically search eBay for competitive deals, so pricing near sold comps improves sell-through.`;
+    }
+    const platformLabel = platform === "depop" ? "Depop" : platform === "vinted" ? "Vinted" : "eBay";
+    return `Based on ${data.count} active ${platformLabel} listings, the median asking price is ${fmtPrice(data.median, currency)}. Price ${data.min !== null && data.max !== null ? `range is ${fmtPrice(data.min, currency)}–${fmtPrice(data.max, currency)}.` : "varies by condition and seller."}`;
+  }
+  return listing.price_reasoning;
+}
+
 export default function ListingOutput({
   listing,
   tagData,
@@ -169,7 +190,7 @@ export default function ListingOutput({
           isExpanded={expandedPlatform === platform}
           onToggle={() => handleExpand(platform)}
           priceInfo={getPlatformPrice(platform, listing, marketInsights, currency)}
-          priceReasoning={listing.price_reasoning}
+          priceReasoning={getPlatformPriceReasoning(platform, listing, marketInsights, currency)}
           category={categoryForPlatform[platform]}
           subcategory={listing.subcategory}
           itemDetails={itemDetails}
