@@ -56,40 +56,47 @@ export async function POST(request: Request) {
     ? buildPrompt(platform, tone, images.length)
     : buildNeutralPrompt(tone, images.length);
 
-  try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: [
-            ...imageBlocks,
-            { type: "text", text: prompt },
-          ],
-        },
-      ],
-    });
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    stream: true,
+    messages: [
+      {
+        role: "user",
+        content: [
+          ...imageBlocks,
+          { type: "text", text: prompt },
+        ],
+      },
+    ],
+  });
 
-    const rawText =
-      response.content[0].type === "text" ? response.content[0].text : "";
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of response) {
+          if (
+            chunk.type === "content_block_delta" &&
+            chunk.delta.type === "text_delta"
+          ) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(chunk.delta.text)}\n\n`)
+            );
+          }
+        }
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
 
-    // Extract JSON — handles cases where Claude wraps in markdown fences
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return Response.json(
-        { error: "Could not parse AI response", raw: rawText },
-        { status: 500 }
-      );
-    }
-
-    const result = JSON.parse(jsonMatch[0]);
-    return Response.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return Response.json(
-      { error: `AI request failed: ${message}` },
-      { status: 500 }
-    );
-  }
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+    },
+  });
 }

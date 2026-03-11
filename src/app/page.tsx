@@ -1,56 +1,43 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import PhotoUploader from "@/components/PhotoUploader";
 import PhotoFeedback from "@/components/PhotoFeedback";
 import ListingOutput from "@/components/ListingOutput";
-import EbayConnect from "@/components/EbayConnect";
 import MarketInsights from "@/components/MarketInsights";
-import CurrencySelector from "@/components/CurrencySelector";
 import type {
   AnalysisResult,
   FormattedListings,
   Photo,
+  PhotoAnalysis,
   Platform,
   Tone,
   MarketInsights as MarketInsightsType,
 } from "@/lib/types";
-import { type Currency } from "@/lib/currency";
 
-type AppStep = "upload" | "loading" | "results";
+type AppStep = "upload" | "loading" | "partial-results" | "results";
+
+function tryParsePhotoAnalysis(buffer: string): PhotoAnalysis | null {
+  try {
+    const tagDataIdx = buffer.indexOf('"tag_data"');
+    if (tagDataIdx === -1) return null;
+    const prefix = buffer.slice(0, tagDataIdx).trimEnd().replace(/,\s*$/, "");
+    const parsed = JSON.parse(prefix + "}");
+    const pa = parsed?.photo_analysis;
+    if (!pa || !Array.isArray(pa.scores)) return null;
+    return pa as PhotoAnalysis;
+  } catch {
+    return null;
+  }
+}
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>("upload");
-  const [ebayConnectedToast, setEbayConnectedToast] = useState(false);
-  const [currency, setCurrency] = useState<Currency>("GBP");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("listd_currency") as Currency | null;
-    if (saved && ["GBP", "EUR", "USD", "AUD"].includes(saved)) {
-      setCurrency(saved);
-    }
-  }, []);
-
-  const handleCurrencyChange = useCallback((c: Currency) => {
-    setCurrency(c);
-    localStorage.setItem("listd_currency", c);
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("ebay") === "connected") {
-      setEbayConnectedToast(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("ebay");
-      window.history.replaceState({}, "", url.toString());
-      const t = setTimeout(() => setEbayConnectedToast(false), 4000);
-      return () => clearTimeout(t);
-    }
-  }, []);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [tone, setTone] = useState<Tone>("casual");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [partialPhotoAnalysis, setPartialPhotoAnalysis] = useState<PhotoAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [marketInsights, setMarketInsights] = useState<MarketInsightsType | null>(null);
   const [loadingMarket, setLoadingMarket] = useState(false);
@@ -104,9 +91,7 @@ export default function Home() {
       .then((data: MarketInsightsType | null) => {
         if (data) {
           setMarketInsights(data);
-          if (data.intelligence?.recommended_platform) {
-            formatListing(data.intelligence.recommended_platform);
-          }
+          (["depop", "vinted", "ebay"] as Platform[]).forEach((p) => formatListing(p));
         }
       })
       .catch(() => {})
@@ -141,6 +126,7 @@ export default function Home() {
     setError(null);
     setFormattedListings({});
     setEbayListingUrl(null);
+    setPartialPhotoAnalysis(null);
 
     try {
       const res = await fetch("/api/analyse", {
@@ -157,7 +143,38 @@ export default function Home() {
         throw new Error(err.error ?? "Analysis failed");
       }
 
-      const data: AnalysisResult = await res.json();
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let partialShown = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6);
+          if (payload === "[DONE]") break;
+          try {
+            buffer += JSON.parse(payload);
+          } catch {
+            // ignore malformed SSE chunk
+          }
+        }
+        if (!partialShown && buffer.includes('"tag_data"')) {
+          const pa = tryParsePhotoAnalysis(buffer);
+          if (pa) {
+            setPartialPhotoAnalysis(pa);
+            setStep("partial-results");
+            partialShown = true;
+          }
+        }
+      }
+
+      const jsonMatch = buffer.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Could not parse AI response");
+      const data: AnalysisResult = JSON.parse(jsonMatch[0]);
       setResult(data);
       setStep("results");
       fetchMarket(data.listing);
@@ -177,6 +194,7 @@ export default function Home() {
     setLoadingMarket(false);
     setFormattedListings({});
     setEbayListingUrl(null);
+    setPartialPhotoAnalysis(null);
     setStep("upload");
   }, [photos]);
 
@@ -185,24 +203,18 @@ export default function Home() {
       <div className="max-w-2xl mx-auto px-4 py-8 pb-16">
         {/* Header */}
         <header className="mb-8">
-          <h1 className="text-3xl font-black tracking-tighter text-gray-900">
-            listd
-          </h1>
+          <button
+            onClick={newItem}
+            className="text-left group"
+          >
+            <h1 className="text-3xl font-black tracking-tighter text-gray-900 group-hover:opacity-70 transition-opacity">
+              listd
+            </h1>
+          </button>
           <p className="text-gray-500 text-sm mt-1">
             Upload your clothes. Get a perfect listing.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <EbayConnect />
-            <CurrencySelector currency={currency} onChange={handleCurrencyChange} />
-          </div>
         </header>
-
-        {/* eBay connected toast */}
-        {ebayConnectedToast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-sm px-4 py-2 rounded-full shadow-lg z-50">
-            eBay account connected!
-          </div>
-        )}
 
         {/* Upload step */}
         {step === "upload" && (
@@ -263,6 +275,23 @@ export default function Home() {
           </div>
         )}
 
+        {/* Partial results step — photo feedback ready, listing still streaming */}
+        {step === "partial-results" && partialPhotoAnalysis && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-2 py-2">
+              <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-gray-500 text-sm">Generating listing…</p>
+            </div>
+            <PhotoFeedback analysis={partialPhotoAnalysis} />
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3 shadow-sm animate-pulse">
+              <div className="h-4 bg-gray-100 rounded w-3/4" />
+              <div className="h-3 bg-gray-100 rounded w-full" />
+              <div className="h-3 bg-gray-100 rounded w-5/6" />
+              <div className="h-3 bg-gray-100 rounded w-4/6" />
+            </div>
+          </div>
+        )}
+
         {/* Results step */}
         {step === "results" && result && (
           <div className="space-y-4">
@@ -293,7 +322,7 @@ export default function Home() {
             <MarketInsights
               data={marketInsights}
               loading={loadingMarket}
-              currency={currency}
+              currency="GBP"
             />
 
             <PhotoFeedback analysis={result.photo_analysis} />
@@ -302,7 +331,7 @@ export default function Home() {
               listing={result.listing}
               tagData={result.tag_data}
               tone={tone}
-              currency={currency}
+              currency="GBP"
               formattedListings={formattedListings}
               loadingFormats={loadingFormats}
               recommendedPlatform={marketInsights?.intelligence?.recommended_platform}
