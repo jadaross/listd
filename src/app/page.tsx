@@ -32,6 +32,26 @@ export default function Page() {
     }
   }, [actions]);
 
+  const cogButton = (
+    <button
+      type="button"
+      onClick={() => setScreen("settings")}
+      aria-label="Settings"
+      className="text-app-text/80 hover:text-app-text"
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M19.4 14.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+
   const headerCfg: {
     title: string;
     serif?: boolean;
@@ -42,7 +62,7 @@ export default function Page() {
   } = (() => {
     switch (screen) {
       case "home":
-        return { title: "wattle", serif: true, large: true };
+        return { title: "", rightAction: cogButton };
       case "confirm":
         return { title: "New listing", back: () => setScreen("home") };
       case "generating":
@@ -64,9 +84,9 @@ export default function Page() {
       case "recommendation":
         return { title: "Where to post", back: () => setScreen("results"), backLabel: "Listing" };
       case "history":
-        return { title: "Your listings", large: true };
+        return { title: "Your listings", large: true, back: () => setScreen("home") };
       case "settings":
-        return { title: "Settings", large: true };
+        return { title: "Settings", large: true, back: () => setScreen("home") };
     }
   })();
 
@@ -83,12 +103,7 @@ export default function Page() {
     );
 
   return (
-    <RootShell
-      screen={screen}
-      onNav={(s) => setScreen(s)}
-      hideTabBar={screen === "generating"}
-      header={header}
-    >
+    <RootShell screen={screen} header={header}>
       {screen === "home" && (
         <HomeScreen
           onPhotosSelected={(p) => {
@@ -109,7 +124,6 @@ export default function Page() {
           state={state}
           actions={actions}
           onSeeRecommendation={() => setScreen("recommendation")}
-          onNewListing={newListing}
         />
       )}
 

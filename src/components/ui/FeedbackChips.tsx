@@ -10,19 +10,23 @@ export function FeedbackChips({
   onToggle,
   onReset,
   platform,
+  inline = false,
 }: {
   applied: Set<ChipId>;
   onToggle: (id: ChipId) => void;
   onReset: () => void;
   /** When set, only chips listed in the platform's spec are shown. */
   platform?: Platform;
+  /** Render without outer page padding (for placement inside a card). */
+  inline?: boolean;
 }) {
   const visible = platform
     ? CHIPS.filter((c) => platformListingSpec[platform].relevantChips.includes(c.id))
     : CHIPS;
+  const pad = inline ? "" : "px-[22px]";
   return (
     <div className="flex flex-col gap-2 pt-1.5">
-      <div className="flex justify-between items-baseline px-[22px]">
+      <div className={`flex justify-between items-baseline ${pad}`}>
         <Eyebrow>Not quite? Tap to refine</Eyebrow>
         {applied.size > 0 && (
           <button
@@ -34,8 +38,8 @@ export function FeedbackChips({
           </button>
         )}
       </div>
-      <div className="overflow-x-auto no-scrollbar">
-        <div className="flex gap-2 px-[22px] py-0.5">
+      <div className="overflow-x-auto no-scrollbar -mx-[2px]">
+        <div className={`flex gap-2 py-0.5 ${pad}`}>
           {visible.map((c) => {
             const active = applied.has(c.id);
             return (

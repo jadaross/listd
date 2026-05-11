@@ -1,7 +1,6 @@
 "use client";
 
 import type { Screen } from "./TabBar";
-import { TabBar } from "./TabBar";
 
 /**
  * Mobile-first device frame. On desktop, centers a ~430px column with the warm
@@ -10,14 +9,10 @@ import { TabBar } from "./TabBar";
  */
 export function RootShell({
   screen,
-  onNav,
-  hideTabBar = false,
   header,
   children,
 }: {
   screen: Screen;
-  onNav: (s: Screen) => void;
-  hideTabBar?: boolean;
   header?: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -28,11 +23,10 @@ export function RootShell({
         <div
           key={screen}
           className="flex-1 overflow-y-auto no-scrollbar screen-enter"
-          style={{ paddingBottom: hideTabBar ? 24 : 88 }}
+          style={{ paddingBottom: 24 }}
         >
           {children}
         </div>
-        {!hideTabBar && <TabBar screen={screen} onNav={onNav} />}
       </div>
     </main>
   );
