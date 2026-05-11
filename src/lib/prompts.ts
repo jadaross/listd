@@ -190,6 +190,59 @@ LISTING:
 - subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;
 }
 
+/**
+ * Per-platform "fields" schema — what dropdowns/inputs the seller has to fill
+ * in on each platform's listing form. The AI is given this list with the
+ * allowed enum values; it picks the closest match for the item.
+ *
+ * Sources (researched May 2026):
+ * - Vinted condition labels: https://www.vinted.co.uk/help/50
+ * - eBay UK pre-loved fashion conditions: https://www.ebay.co.uk/sellercentre/news/2025-january/fashion-conditions
+ * - Depop API schema: https://partnerapi.depop.com/api-docs/getting-started/your-first-listing/
+ */
+const FIELDS_SCHEMA: Record<Platform, string> = {
+  vinted: `Return these fields in the "fields" array, in this order. Use the EXACT label strings and pick values from the allowed sets:
+
+- { "label": "Category", "value": "<cascade like 'Women > Clothing > Outerwear > Coats & jackets' or 'Men > Clothing > Tops > T-shirts & vests'>", "hint": "Pick the most specific path that fits" }
+- { "label": "Brand", "value": "<brand name, or 'Unbranded'>" }
+- { "label": "Size", "value": "<UK or EU size that matches the item, e.g. 'M', 'UK 10', 'EU 38'>" }
+- { "label": "Condition", "value": "<MUST be one of: New with tags | New without tags | Very good | Good | Satisfactory>" }
+- { "label": "Colour", "value": "<one of: Black | Brown | White | Grey | Beige | Pink | Purple | Red | Orange | Yellow | Green | Blue | Multi>" }
+- { "label": "Material", "value": "<one of: Cotton | Polyester | Wool | Leather | Denim | Linen | Silk | Synthetic | Cashmere | Nylon | Viscose | Blend | Other>" }
+- { "label": "Parcel size", "value": "<MUST be one of: Small | Medium | Large>", "hint": "Small: tops, accessories. Medium: jeans, dresses, jumpers. Large: coats, boots, bulky items." }`,
+
+  ebay: `Return these fields in the "fields" array, in this order. Use the EXACT label strings and pick values from the allowed sets:
+
+- { "label": "Category", "value": "<eBay path, e.g. 'Clothes, Shoes & Accessories > Women > Women's Clothing > Coats, Jackets & Waistcoats'>" }
+- { "label": "Department", "value": "<one of: Women | Men | Boys | Girls | Unisex Adult | Unisex Kids>" }
+- { "label": "Type", "value": "<specific type like 'Hoodie', 'Denim Jacket', 'Polo Shirt', 'Jeans', 'Midi Dress'>" }
+- { "label": "Brand", "value": "<brand or 'Unbranded'>" }
+- { "label": "Size", "value": "<size as written on the tag>" }
+- { "label": "Size Type", "value": "<one of: Regular | Plus | Petite | Big & Tall | Maternity>" }
+- { "label": "Style", "value": "<one or two of: Casual | Smart Casual | Workwear | Streetwear | Vintage | Sportswear | Bohemian | Y2K | Preppy | Grunge>" }
+- { "label": "Colour", "value": "<primary colour>" }
+- { "label": "Material", "value": "<dominant material from the tag or visible fabric>" }
+- { "label": "Condition", "value": "<MUST be one of: New with tags | New without tags | New with defects | Pre-owned – Excellent | Pre-owned – Good | Pre-owned – Fair>" }`,
+
+  depop: `Return these fields in the "fields" array, in this order. Use the EXACT label strings and pick values from the allowed sets:
+
+- { "label": "Department", "value": "<one of: Womenswear | Menswear | Kidswear | Unisex>" }
+- { "label": "Product type", "value": "<e.g. 'T-shirts', 'Hoodies', 'Jeans', 'Jackets', 'Trainers'>" }
+- { "label": "Brand", "value": "<brand or 'Unbranded'>" }
+- { "label": "Size", "value": "<UK/EU size>" }
+- { "label": "Condition", "value": "<MUST be one of: Brand new | Like new | Used – Excellent | Used – Good | Used – Fair>" }
+- { "label": "Colour", "value": "<primary colour>" }
+- { "label": "Style", "value": "<one or two of: Streetwear | Y2K | Vintage | Retro | Sportswear | Workwear | Cottagecore | Grunge | Preppy | Punk | Skater | Minimalist>" }
+- { "label": "Age", "value": "<one of: 2020s | 2010s | Y2K | 90s | 80s | 70s | 60s>", "hint": "Only include if item is genuinely vintage. Omit this row entirely if not." }
+- { "label": "Source", "value": "<one of: Vintage | Pre-loved | New>" }`,
+};
+
+const PLATFORM_LABELS: Record<Platform, string> = {
+  depop: "Depop",
+  vinted: "Vinted",
+  ebay: "eBay",
+};
+
 export function buildFormatPrompt(platform: Platform, tone: Tone, listing: Listing): string {
   return `You are a secondhand fashion listing specialist. Reformat the following clothing listing for ${PLATFORM_LABELS[platform]}.
 
@@ -205,22 +258,27 @@ Return ONLY a valid JSON object — no markdown code fences, no explanation text
 {
   "title": "",
   "description": "",
-  "hashtags": []
+  "hashtags": [],
+  "fields": [
+    { "label": "", "value": "", "hint": "" }
+  ]
 }
 
-Rules:
+Rules for title / description / hashtags:
 - title: adapt to platform requirements (max chars, format conventions)
 - description: rewrite for platform audience and length requirements
 - hashtags: format correctly for platform (with/without # prefix, count)
 - Keep all factual details accurate — only change style, length, and format
-- Do NOT invent new information`;
-}
+- Do NOT invent new information
 
-const PLATFORM_LABELS: Record<Platform, string> = {
-  depop: "Depop",
-  vinted: "Vinted",
-  ebay: "eBay",
-};
+Rules for fields (these are the dropdowns/inputs the seller picks on the ${PLATFORM_LABELS[platform]} listing form):
+${FIELDS_SCHEMA[platform]}
+
+For every field:
+- "value" MUST come from the allowed list when one is given (don't paraphrase).
+- "hint" is optional — only include it when the rationale is non-obvious.
+- If the source listing genuinely lacks the info, pick the best safe default (e.g. "Unbranded" if no brand) rather than leaving the value empty.`;
+}
 
 export function buildRefinePrompt(
   platform: Platform,
@@ -242,12 +300,16 @@ Return ONLY a valid JSON object — no markdown code fences, no explanation text
 {
   "title": "",
   "description": "",
-  "hashtags": []
+  "hashtags": [],
+  "fields": [
+    { "label": "", "value": "", "hint": "" }
+  ]
 }
 
 Rules:
 - Apply every refinement above. If two refinements conflict, the later one wins.
 - Keep all factual details accurate — only change style, length, and format.
 - Do NOT invent new information (no measurements unless asked; no condition claims that weren't in the source).
-- Respect platform format rules (title length, hashtag conventions).`;
+- Respect platform format rules (title length, hashtag conventions).
+- "fields": return the EXACT SAME array that came in unless a refinement instruction specifically changes a structured value (e.g. an instruction like "set condition to Pre-owned – Fair"). Do not rewrite labels or values gratuitously.`;
 }

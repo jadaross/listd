@@ -34,10 +34,18 @@ struct PhotoRef: Identifiable, Hashable {
     let hue: Double
 }
 
+struct ListingField: Equatable, Identifiable {
+    let label: String
+    let value: String
+    var hint: String?
+    var id: String { label }
+}
+
 struct Caption: Equatable {
     var title: String
     var body: String
     var tags: [String]
+    var fields: [ListingField] = []
 }
 
 enum FeedbackChip: String, CaseIterable, Identifiable {
@@ -109,7 +117,16 @@ enum MockData {
 
             From a smoke-free home. Bundle discounts available.
             """,
-            tags: ["carhartt", "workwear", "vintage", "jacket", "mens", "unisex"]
+            tags: ["carhartt", "workwear", "vintage", "jacket", "mens", "unisex"],
+            fields: [
+                .init(label: "Category",    value: "Men > Clothing > Outerwear > Coats & jackets"),
+                .init(label: "Brand",       value: "Carhartt"),
+                .init(label: "Size",        value: "M"),
+                .init(label: "Condition",   value: "Very good"),
+                .init(label: "Colour",      value: "Brown"),
+                .init(label: "Material",    value: "Cotton"),
+                .init(label: "Parcel size", value: "Large", hint: "Coats and bulky items go in Large."),
+            ]
         ),
         .depop: Caption(
             title: "carhartt detroit ✨ heavy duck canvas worker jacket",
@@ -118,7 +135,18 @@ enum MockData {
 
             no flaws, no smells, ready to wear 🧡
             """,
-            tags: ["carhartt", "detroit", "workwear", "vintage", "y2k", "menswear", "streetwear"]
+            tags: ["carhartt", "detroit", "workwear", "vintage", "y2k", "menswear", "streetwear"],
+            fields: [
+                .init(label: "Department",   value: "Menswear"),
+                .init(label: "Product type", value: "Jackets"),
+                .init(label: "Brand",        value: "Carhartt"),
+                .init(label: "Size",         value: "M"),
+                .init(label: "Condition",    value: "Used – Excellent"),
+                .init(label: "Colour",       value: "Brown"),
+                .init(label: "Style",        value: "Workwear, Vintage"),
+                .init(label: "Age",          value: "90s"),
+                .init(label: "Source",       value: "Vintage"),
+            ]
         ),
         .ebay: Caption(
             title: "Vintage Carhartt Detroit Jacket Brown Duck Canvas Blanket Lined Size Medium",
@@ -134,7 +162,19 @@ enum MockData {
 
             Ships from a smoke-free, pet-free home within 1 business day. Combined shipping available on multiple purchases.
             """,
-            tags: []
+            tags: [],
+            fields: [
+                .init(label: "Category",   value: "Clothes, Shoes & Accessories > Men > Men's Clothing > Coats, Jackets & Waistcoats"),
+                .init(label: "Department", value: "Men"),
+                .init(label: "Type",       value: "Denim Jacket"),
+                .init(label: "Brand",      value: "Carhartt"),
+                .init(label: "Size",       value: "M"),
+                .init(label: "Size Type",  value: "Regular"),
+                .init(label: "Style",      value: "Workwear, Vintage"),
+                .init(label: "Colour",     value: "Brown"),
+                .init(label: "Material",   value: "Cotton (heavyweight duck)"),
+                .init(label: "Condition",  value: "Pre-owned – Excellent"),
+            ]
         ),
     ]
 

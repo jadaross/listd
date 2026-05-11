@@ -26,6 +26,11 @@ struct ResultsView: View {
                 platformPills
                 boostAccuracy
                 captionCard
+                PlatformFieldsCard(
+                    platformName: MockData.platforms.first(where: { $0.id == state.activePlatform })?.name ?? "",
+                    fields: caption.fields,
+                    theme: theme
+                )
                 feedbackChips
                 newListingCTA
             }

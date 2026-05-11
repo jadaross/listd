@@ -91,10 +91,26 @@ export interface MarketInsights {
   intelligence: MarketIntelligence | null;
 }
 
+/**
+ * A single dropdown / form field on a platform's listing form.
+ * Each row is rendered as a copyable label + value pair so the user can
+ * paste the right value into the platform app/website.
+ */
+export interface ListingField {
+  /** Human label exactly as it appears on the platform's form (e.g. "Parcel size", "Condition", "Department"). */
+  label: string;
+  /** The value the user should select or paste. */
+  value: string;
+  /** Optional short hint explaining why this value was chosen. */
+  hint?: string;
+}
+
 export interface PlatformListing {
   title: string;
   description: string;
   hashtags: string[];
+  /** Platform-specific form fields (Vinted parcel size, eBay department, etc.). Optional for backwards-compat. */
+  fields?: ListingField[];
 }
 
 export interface FormattedListings {

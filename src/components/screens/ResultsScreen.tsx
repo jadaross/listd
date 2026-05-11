@@ -14,6 +14,7 @@ import { FieldRow } from "@/components/ui/FieldRow";
 import { CopyAllButton } from "@/components/ui/CopyAllButton";
 import { FeedbackChips } from "@/components/ui/FeedbackChips";
 import { BoostAccuracy } from "@/components/ui/BoostAccuracy";
+import { PlatformFields } from "@/components/ui/PlatformFields";
 import { Spinner } from "@/components/ui/Spinner";
 import { StarIcon } from "@/components/ui/StarIcon";
 
@@ -239,6 +240,9 @@ export function ResultsScreen({
                     platformListing.description +
                     (platformListing.hashtags.length
                       ? "\n\n" + platformListing.hashtags.map((t) => (t.startsWith("#") ? t : "#" + t)).join(" ")
+                      : "") +
+                    (platformListing.fields && platformListing.fields.length
+                      ? "\n\n" + platformListing.fields.map((f) => `${f.label}: ${f.value}`).join("\n")
                       : "")
                   }
                 />
@@ -257,6 +261,14 @@ export function ResultsScreen({
           </div>
         )}
       </div>
+
+      {/* Platform-specific fields to pick */}
+      {platformListing?.fields && platformListing.fields.length > 0 && (
+        <PlatformFields
+          platformName={PLATFORM_META[activePlatform].name}
+          fields={platformListing.fields}
+        />
+      )}
 
       {/* Feedback chips */}
       <FeedbackChips applied={chips} onToggle={onToggleChip} onReset={onResetChips} />
