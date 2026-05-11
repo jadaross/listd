@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { platformMetadata, PLATFORM_IDS } from "@/platforms";
 import { Wordmark } from "@/components/brand/Wordmark";
 
@@ -9,12 +9,23 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const TOTAL: 6 = 6;
 
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingFlow />
+    </Suspense>
+  );
+}
+
+function OnboardingFlow() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>(0);
+  const search = useSearchParams();
+  const tourMode = search.get("from") === "tour";
+
+  const [step, setStep] = useState<Step>(tourMode ? 3 : 0);
 
   const next = () => setStep((s) => Math.min(s + 1, TOTAL - 1) as Step);
   const back = () => setStep((s) => Math.max(s - 1, 0) as Step);
-  const complete = () => router.push("/");
+  const exit = () => router.push(tourMode ? "/?screen=settings" : "/");
 
   return (
     <main className="min-h-dvh w-full flex items-stretch justify-center bg-app-bg">
@@ -38,8 +49,9 @@ export default function OnboardingPage() {
         {step >= 3 && step <= 5 && (
           <Tour
             step={(step - 3) as 0 | 1 | 2}
-            onNext={() => (step === 5 ? complete() : next())}
-            onSkip={complete}
+            tourMode={tourMode}
+            onNext={() => (step === 5 ? exit() : next())}
+            onSkip={exit}
           />
         )}
       </div>
@@ -251,10 +263,12 @@ function Permissions({ onNext }: { onNext: () => void }) {
 
 function Tour({
   step,
+  tourMode,
   onNext,
   onSkip,
 }: {
   step: 0 | 1 | 2;
+  tourMode: boolean;
   onNext: () => void;
   onSkip: () => void;
 }) {
@@ -317,10 +331,12 @@ function Tour({
         onClick={onNext}
         className="py-[15px] px-4 rounded-[14px] bg-app-text text-app-bg text-[15px] font-semibold flex items-center justify-center gap-2"
       >
-        {isLast ? "Start your first listing" : "Next"}
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        {isLast ? (tourMode ? "Done" : "Start your first listing") : "Next"}
+        {!(isLast && tourMode) && (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
       </button>
     </div>
   );

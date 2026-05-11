@@ -12,11 +12,27 @@ import { Eyebrow } from "./Eyebrow";
 export function PlatformFields({
   platformName,
   fields,
+  inline = false,
 }: {
   platformName: string;
   fields: ListingField[];
+  /** Render without the outer card wrapper / page padding, for placement inside another card. */
+  inline?: boolean;
 }) {
   if (!fields || fields.length === 0) return null;
+
+  if (inline) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Eyebrow>Fields to pick on {platformName}</Eyebrow>
+        <div className="rounded-[14px] border border-app-line overflow-hidden">
+          {fields.map((f, i) => (
+            <FieldRow key={f.label} field={f} isLast={i === fields.length - 1} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-[22px] flex flex-col gap-2">

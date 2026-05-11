@@ -103,7 +103,7 @@ LISTING:
 - price_reasoning: one sentence explaining the price logic
 - title: ${platform === 'ebay' ? 'max 80 characters' : 'max 60 characters'}
 - description: ${platform === 'depop' ? '3–4 short punchy sentences, max 60 words. Give it personality. No filler phrases.' : platform === 'vinted' ? '4–5 clear sentences, max 80 words. Lead with the most important details. No waffle.' : '4–6 sentences, 150–250 words. Detailed and factual. Include fabric, visible measurements, condition specifics, care info.'}
-- hashtags: ${platform === 'depop' ? '8–10 actual hashtag strings including # prefix' : platform === 'vinted' ? '8–10 keywords without # for Vinted search' : '5–8 eBay-style item specifics keywords without # prefix'}
+- hashtags: ${platform === 'depop' ? 'UP TO 5 actual hashtag strings with # prefix (mix: 3 descriptive — type/brand/material — + 1–2 style/aesthetic like #y2k, #cottagecore). Each tag must be genuinely relevant.' : 'EMPTY ARRAY []. ' + (platform === 'vinted' ? 'Vinted has no hashtag system — its search reads title and description directly, so bake keywords into those instead.' : 'eBay has no tag field — search runs off the 80-char title and item specifics, so pack keywords into the title.')}
 - gender: "women" | "men" | "kids" | "unisex" — who this item is for
 - main_category: "tops" | "bottoms" | "dresses" | "outerwear" | "knitwear" | "swimwear" | "underwear" | "sportswear" | "shoes" | "accessories" | "bags" | "other"
 - subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;

@@ -3,7 +3,7 @@ import type { ChipId } from "@/lib/chip-vocab";
 import type { PlatformListingSpec } from "../types";
 
 const promptFragment =
-  'Format for Vinted: Title max 60 characters, sentence case (capitalise first word and proper nouns only — no title case). Description: 3–4 sentences max 80 words. MUST include the item size in the description. Each sentence goes on its own line with a blank line between them. Do NOT suggest outfit pairings, styling ideas, or what to wear it with — focus on fabric, condition, fit, and key details only. Put 8–10 search keywords (no # prefix) in the "hashtags" array.';
+  'Format for Vinted: Vinted has NO hashtag system — its search is pure keyword matching against title and description. Leave the "hashtags" array EMPTY ([]). Instead, make sure brand, item type, size, colour, material, and any distinctive search terms appear naturally in the title and first sentence of the description. Title max 60 characters, sentence case (capitalise first word and proper nouns only — no title case). Description: 3–4 sentences max 80 words. MUST include the item size in the description. Each sentence goes on its own line with a blank line between them. Do NOT suggest outfit pairings, styling ideas, or what to wear it with — focus on fabric, condition, fit, and key details only.';
 
 const fieldsSchema = `Return these fields in the "fields" array, in this order. Use the EXACT label strings and pick values from the allowed sets:
 
@@ -31,7 +31,6 @@ const relevantChips: ChipId[] = [
   "casual",
   "serious",
   "measurements",
-  "hashtags",
   "condition",
   "vintage",
 ];

@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import EbayConnect from "@/components/EbayConnect";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
 export function SettingsScreen() {
+  const router = useRouter();
   const sections: { title: string; rows: { label: string; value: string }[] }[] = [
     {
       title: "Account",
@@ -69,6 +71,23 @@ export function SettingsScreen() {
           </div>
         </div>
       ))}
+
+      {/* Help */}
+      <div className="flex flex-col gap-2">
+        <Eyebrow className="pl-1">Help</Eyebrow>
+        <div className="bg-app-card rounded-[14px] border border-app-line overflow-hidden">
+          <button
+            type="button"
+            onClick={() => router.push("/onboarding?from=tour")}
+            className="w-full px-4 py-3.5 flex justify-between items-center text-left hover:bg-app-subtle/60"
+          >
+            <div className="text-[14px] text-app-text">How to use wattle</div>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden className="text-app-muted">
+              <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import type { ChipId } from "@/lib/chip-vocab";
 import type { PlatformListingSpec } from "../types";
 
 const promptFragment =
-  'Format for eBay: title max 80 characters. Include condition-specific language buyers search for. Description should be detailed and factual — include fabric, measurements if visible, condition detail, and care info. Use "hashtags" array for 5-8 eBay-style item specifics keywords (no # prefix) that match eBay search terms. 150-200 words in description is appropriate.';
+  'Format for eBay: eBay has NO tag field — search is driven entirely by the 80-character title and the item specifics in "fields". Leave the "hashtags" array EMPTY ([]). USE THE FULL 80 CHARACTERS of the title to pack in keywords buyers actually search for (brand, exact type, key feature, colour, size, condition language). Description should be detailed and factual — include fabric, measurements if visible, condition detail, and care info. 150–200 words in description is appropriate.';
 
 const fieldsSchema = `Return these fields in the "fields" array, in this order. Use the EXACT label strings and pick values from the allowed sets:
 
@@ -37,7 +37,6 @@ const relevantChips: ChipId[] = [
   "casual",
   "serious",
   "measurements",
-  "hashtags",
   "condition",
   "vintage",
 ];

@@ -3,7 +3,7 @@ import type { ChipId } from "@/lib/chip-vocab";
 import type { PlatformListingSpec } from "../types";
 
 const promptFragment =
-  'Format for Depop: include 8–10 relevant hashtags in the "hashtags" array with # prefix. Title: Brand + Type + Key Feature, max 60 chars, sentence case (capitalise first word only). Descriptions suit a younger, fashion-forward audience.';
+  'Format for Depop: include UP TO 5 hashtags in the "hashtags" array with # prefix. Mix: 3 descriptive (type / brand / material) + 1–2 style or aesthetic (e.g. #y2k, #cottagecore, #streetwear, #vintage). Each tag must be genuinely relevant to the item — Depop penalises misleading or spammy tags. Fewer relevant tags is better than padding. Title: Brand + Type + Key Feature, max 60 chars, sentence case (capitalise first word only). Descriptions suit a younger, fashion-forward audience.';
 
 const fieldsSchema = `Return these fields in the "fields" array, in this order. Use the EXACT label strings and pick values from the allowed sets:
 

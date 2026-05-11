@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useListingPipeline } from "@/lib/use-listing-pipeline";
 import { RootShell } from "@/components/layout/RootShell";
 import type { Screen } from "@/components/layout/TabBar";
@@ -14,7 +15,38 @@ import { HistoryScreen } from "@/components/screens/HistoryScreen";
 import { SettingsScreen } from "@/components/screens/SettingsScreen";
 
 export default function Page() {
-  const [screen, setScreen] = useState<Screen>("home");
+  return (
+    <Suspense fallback={null}>
+      <App />
+    </Suspense>
+  );
+}
+
+const VALID_SCREENS: ReadonlySet<Screen> = new Set([
+  "home",
+  "confirm",
+  "generating",
+  "results",
+  "recommendation",
+  "history",
+  "settings",
+]);
+
+function App() {
+  const router = useRouter();
+  const search = useSearchParams();
+  const initialScreen = (() => {
+    const s = search.get("screen") as Screen | null;
+    return s && VALID_SCREENS.has(s) ? s : "home";
+  })();
+  const [screen, setScreen] = useState<Screen>(initialScreen);
+
+  // Clear ?screen=... from the URL once we've used it for initial routing.
+  useEffect(() => {
+    if (search.get("screen")) router.replace("/");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { state, actions } = useListingPipeline();
 
   const newListing = useCallback(() => {

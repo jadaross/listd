@@ -37,7 +37,7 @@ async function publishListing({
   const inventoryBody = {
     product: {
       title: formatted.title,
-      description: `${formatted.description}\n\n${formatted.hashtags.join(" ")}`,
+      description: formatted.description,
       aspects: {
         Brand: [listing.brand || "Unknown"],
         Size: [listing.size || "See description"],
@@ -79,7 +79,7 @@ async function publishListing({
     format: "FIXED_PRICE",
     availableQuantity: 1,
     categoryId: String(categoryId),
-    listingDescription: `${formatted.description}\n\n${formatted.hashtags.join(" ")}`,
+    listingDescription: formatted.description,
     listingPolicies: {},
     pricingSummary: {
       price: {
