@@ -1,4 +1,4 @@
-import type { Listing, Platform, Tone } from "./types";
+import type { Listing, Platform, PlatformListing, Tone } from "./types";
 
 const TONE_MAP: Record<Tone, string> = {
   casual:
@@ -222,20 +222,32 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   ebay: "eBay",
 };
 
-export function buildGroupPrompt(imageCount: number): string {
-  return `You are analysing ${imageCount} clothing photo(s). Group them by clothing item — photos of the same item go in the same group, different items go in separate groups.
+export function buildRefinePrompt(
+  platform: Platform,
+  listing: PlatformListing,
+  instructions: string[]
+): string {
+  return `You are a secondhand fashion listing specialist. Refine an existing ${PLATFORM_LABELS[platform]} listing based on user feedback.
 
-Return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON starting with { and ending with }.
+${PLATFORM_MAP[platform]}
+
+Current listing:
+${JSON.stringify(listing, null, 2)}
+
+Apply these refinements (do them all, in order):
+${instructions.map((i, idx) => `${idx + 1}. ${i}`).join("\n")}
+
+Return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON:
 
 {
-  "groups": [
-    { "label": "Blue denim jacket", "indices": [0, 1, 2] },
-    { "label": "White cotton t-shirt", "indices": [3, 4] }
-  ]
+  "title": "",
+  "description": "",
+  "hashtags": []
 }
 
 Rules:
-- Each index (0-based) must appear exactly once across all groups
-- label: short descriptive name for the item (e.g. "Black leather boots", "Floral midi dress")
-- If you cannot distinguish separate items, put all indices in one group`;
+- Apply every refinement above. If two refinements conflict, the later one wins.
+- Keep all factual details accurate — only change style, length, and format.
+- Do NOT invent new information (no measurements unless asked; no condition claims that weren't in the source).
+- Respect platform format rules (title length, hashtag conventions).`;
 }

@@ -63,11 +63,23 @@ export interface PlatformPriceData {
   sold_count?: number | null;
 }
 
+export interface PlatformReasoning {
+  /** "good" — why this platform suits the item */
+  platform_reasoning: string;
+  /** "bad" — the main trade-off */
+  trade_off: string;
+  /** e.g. "6 days" */
+  estimated_sell_time: string;
+  /** e.g. "~140/wk" */
+  estimated_views_per_week: string;
+}
+
 export interface MarketIntelligence {
   recommended_platform: Platform;
   recommended_price: number;
   sell_likelihood: "high" | "medium" | "low";
-  platform_reasoning: string;
+  /** Per-platform reasoning so the recommendation screen can show a deep-dive for any platform */
+  per_platform: Record<Platform, PlatformReasoning>;
   key_insight: string;
 }
 
@@ -99,24 +111,6 @@ export interface AnalysisResult {
 
 export type Platform = "vinted" | "depop" | "ebay";
 export type Tone = "casual" | "professional";
-export type Mode = "single" | "bulk";
-
-export interface PhotoGroup {
-  label: string;
-  indices: number[];
-}
-
-export interface GroupResult {
-  groups: PhotoGroup[];
-}
-
-export interface BulkItem {
-  group: PhotoGroup;
-  photos: Photo[];
-  result: AnalysisResult | null;
-  loading: boolean;
-  error: string | null;
-}
 
 export interface EbayConnectionStatus {
   connected: boolean;
