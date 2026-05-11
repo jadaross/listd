@@ -23,9 +23,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "listd — perfect listings, instantly",
+  title: "wattle — perfect listings, instantly",
   description:
-    "Snap your item — we'll write the listing and tell you where to post it.",
+    "Shoot it, list it. Across every platform.",
 };
 
 export default function RootLayout({

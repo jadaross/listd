@@ -1,14 +1,24 @@
 @import "tailwindcss";
 
-/* Warm direction — matches ios/Listd/Theme.swift ListdTheme.warm */
+/* Wattle — distilled from the Scarlet Blaze wattle */
 @theme {
-  --color-app-bg:      #f6f2eb;
+  --color-app-bg:      #f5efe3;
   --color-app-card:    #ffffff;
-  --color-app-text:    #1c1a16;
+  --color-app-text:    #1f1714;
   --color-app-muted:   #86807a;
-  --color-app-line:    rgba(28, 26, 22, 0.08);
-  --color-app-subtle:  #efebe3;
-  --color-app-accent:  #3b5cff;
+  --color-app-line:    rgba(31, 23, 20, 0.08);
+  --color-app-subtle:  #efe8d6;
+  --color-app-accent:  #c8321a;
+
+  --color-brand-scarlet:  #c8321a;
+  --color-brand-ember:    #e25a2b;
+  --color-brand-pollen:   #e8b547;
+  --color-brand-eucalypt: #455944;
+  --color-brand-shadow:   #2c3b2d;
+  --color-brand-bark:     #1f1714;
+  --color-brand-paper:    #f5efe3;
+  --color-brand-pale:     #fbf7ef;
+  --color-brand-line:     #e5dece;
 
   --color-platform-vinted: #09b1ba;
   --color-platform-depop:  #f00d2d;

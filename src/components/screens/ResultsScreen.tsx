@@ -266,7 +266,7 @@ export function ResultsScreen({
         <button
           type="button"
           onClick={onNewListing}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-[14px] bg-app-accent text-white text-[14px] font-semibold shadow-[0_6px_18px_rgba(59,92,255,0.2)] hover:opacity-95"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-[14px] bg-app-accent text-white text-[14px] font-semibold shadow-[0_6px_18px_rgba(200,50,26,0.22)] hover:opacity-95"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
             <path d="M8 3v10M3 8h10" stroke="white" strokeWidth="2" strokeLinecap="round" />

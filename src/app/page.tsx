@@ -42,7 +42,7 @@ export default function Page() {
   } = (() => {
     switch (screen) {
       case "home":
-        return { title: "listd", serif: true, large: true };
+        return { title: "wattle", serif: true, large: true };
       case "confirm":
         return { title: "New listing", back: () => setScreen("home") };
       case "generating":

@@ -39,7 +39,7 @@ export function GeneratingScreen() {
           </svg>
           <div
             className="absolute inset-[18px] rounded-full flex items-center justify-center"
-            style={{ background: "rgba(59, 92, 255, 0.12)" }}
+            style={{ background: "rgba(200, 50, 26, 0.12)" }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M12 3l2.4 6.8L21 12l-6.6 2.2L12 21l-2.4-6.8L3 12l6.6-2.2L12 3z" fill="var(--color-app-accent)" />

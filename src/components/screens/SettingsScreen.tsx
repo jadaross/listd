@@ -28,13 +28,13 @@ export function SettingsScreen() {
       <div className="flex gap-3.5 items-center py-1">
         <div
           className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-[20px] font-semibold"
-          style={{ background: "rgba(59, 92, 255, 0.13)", color: "var(--color-app-accent)" }}
+          style={{ background: "rgba(200, 50, 26, 0.13)", color: "var(--color-app-accent)" }}
         >
           EM
         </div>
         <div>
           <div className="text-[17px] font-semibold text-app-text">Ellie M.</div>
-          <div className="text-[13px] text-app-muted">listd Pro · 47 listings</div>
+          <div className="text-[13px] text-app-muted">wattle Pro · 47 listings</div>
         </div>
       </div>
 

@@ -3,6 +3,8 @@
 import { useRef } from "react";
 import type { Photo } from "@/lib/types";
 import { compressImage } from "@/lib/compress";
+import { BloomMark } from "@/components/brand/BloomMark";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 export function HomeScreen({ onPhotosSelected }: { onPhotosSelected: (photos: Photo[]) => void }) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -27,11 +29,12 @@ export function HomeScreen({ onPhotosSelected }: { onPhotosSelected: (photos: Ph
     <div className="px-[22px] pt-1 pb-8 flex flex-col gap-[22px]">
       {/* Wordmark */}
       <div className="pt-2 flex flex-col gap-1.5">
-        <div className="font-serif text-[56px] leading-none tracking-tight text-app-text">
-          listd<span className="text-app-accent">.</span>
+        <div className="flex items-end gap-2">
+          <BloomMark size={64} style={{ marginBottom: -6 }} />
+          <Wordmark size={56} />
         </div>
         <div className="text-[14px] text-app-muted leading-snug max-w-[280px]">
-          Snap your item — we&apos;ll write the listing and tell you where to post it.
+          Shoot it, list it. Across every platform.
         </div>
       </div>
 

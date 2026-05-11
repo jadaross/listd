@@ -30,7 +30,7 @@ export function ConfirmScreen({
       <button
         type="button"
         onClick={onGenerate}
-        className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-app-accent text-white text-[16px] font-semibold shadow-[0_8px_20px_rgba(59,92,255,0.2)] hover:opacity-95"
+        className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-app-accent text-white text-[16px] font-semibold shadow-[0_8px_20px_rgba(200,50,26,0.22)] hover:opacity-95"
       >
         Generate listings
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
