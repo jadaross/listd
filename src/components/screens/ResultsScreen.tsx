@@ -9,9 +9,7 @@ import {
   platformMetadata as PLATFORM_META,
   PLATFORM_IDS as PLATFORM_ORDER,
 } from "@/platforms";
-import { Eyebrow } from "@/components/ui/Eyebrow";
 import { FieldRow } from "@/components/ui/FieldRow";
-import { CopyAllButton } from "@/components/ui/CopyAllButton";
 import { FeedbackChips } from "@/components/ui/FeedbackChips";
 import { BoostAccuracy } from "@/components/ui/BoostAccuracy";
 import { PlatformFields } from "@/components/ui/PlatformFields";
@@ -177,29 +175,6 @@ export function ResultsScreen({
                   />
                 </>
               )}
-
-              <div className="h-[0.5px] bg-app-line" />
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-[12px] text-app-muted">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M12 3l2.4 6.8L21 12l-6.6 2.2L12 21l-2.4-6.8L3 12l6.6-2.2L12 3z" fill="var(--color-app-accent)" />
-                  </svg>
-                  Generated · ~{Math.max(1, Math.round(platformListing.description.length / 5))} words
-                </div>
-                <CopyAllButton
-                  text={
-                    platformListing.title +
-                    "\n\n" +
-                    platformListing.description +
-                    (platformListing.hashtags.length
-                      ? "\n\n" + platformListing.hashtags.map((t) => (t.startsWith("#") ? t : "#" + t)).join(" ")
-                      : "") +
-                    (platformListing.fields && platformListing.fields.length
-                      ? "\n\n" + platformListing.fields.map((f) => `${f.label}: ${f.value}`).join("\n")
-                      : "")
-                  }
-                />
-              </div>
             </>
           ) : (
             <div className="py-6 text-center text-[13px] text-app-muted">No listing yet for this platform.</div>
@@ -245,10 +220,6 @@ export function ResultsScreen({
         </button>
       </div>
 
-      {/* Eyebrow helper for tone */}
-      <div className="px-[22px] pt-1">
-        <Eyebrow>{result.listing.material || "Material unknown"}</Eyebrow>
-      </div>
     </div>
   );
 }

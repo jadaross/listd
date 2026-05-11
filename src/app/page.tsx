@@ -101,7 +101,7 @@ function App() {
         return { title: "" };
       case "results":
         return {
-          title: "Listings",
+          title: "",
           back: () => setScreen("home"),
           rightAction: (
             <button
