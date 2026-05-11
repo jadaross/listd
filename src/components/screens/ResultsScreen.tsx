@@ -1,14 +1,14 @@
 "use client";
 
+import type { PlatformListing } from "@/lib/types";
 import type {
-  AnalysisResult,
-  FormattedListings,
-  MarketInsights,
-  Platform,
-  PlatformListing,
-} from "@/lib/types";
-import type { ChipId } from "@/lib/chip-vocab";
-import { PLATFORM_META, PLATFORM_ORDER } from "@/lib/platforms";
+  PipelineState,
+  PipelineActions,
+} from "@/lib/use-listing-pipeline";
+import {
+  platformMetadata as PLATFORM_META,
+  PLATFORM_IDS as PLATFORM_ORDER,
+} from "@/platforms";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { FieldRow } from "@/components/ui/FieldRow";
 import { CopyAllButton } from "@/components/ui/CopyAllButton";
@@ -18,51 +18,32 @@ import { PlatformFields } from "@/components/ui/PlatformFields";
 import { Spinner } from "@/components/ui/Spinner";
 import { StarIcon } from "@/components/ui/StarIcon";
 
-type EditField = "title" | "body";
-type AddedPhoto = { id: string; applied: boolean };
-
 export function ResultsScreen({
-  result,
-  marketInsights,
-  formattedListings,
-  loadingFormats,
-  activePlatform,
-  onChangePlatform,
-  chips,
-  onToggleChip,
-  onResetChips,
-  regenerating,
-  editingField,
-  onStartEdit,
-  onCancelEdit,
-  onCommitEdit,
-  addedPhotos,
-  onQueuePhoto,
-  onRegenWithPhotos,
+  state,
+  actions,
   onSeeRecommendation,
   onNewListing,
 }: {
-  result: AnalysisResult;
-  marketInsights: MarketInsights | null;
-  formattedListings: FormattedListings;
-  loadingFormats: Set<Platform>;
-  activePlatform: Platform;
-  onChangePlatform: (p: Platform) => void;
-  chips: Set<ChipId>;
-  onToggleChip: (id: ChipId) => void;
-  onResetChips: () => void;
-  regenerating: boolean;
-  editingField: EditField | null;
-  onStartEdit: (f: EditField) => void;
-  onCancelEdit: () => void;
-  onCommitEdit: (f: EditField, v: string) => void;
-  addedPhotos: AddedPhoto[];
-  onQueuePhoto: (id: string) => void;
-  onRegenWithPhotos: () => void;
+  state: PipelineState;
+  actions: PipelineActions;
   onSeeRecommendation: () => void;
   onNewListing: () => void;
 }) {
-  const winner: Platform = marketInsights?.intelligence?.recommended_platform ?? "ebay";
+  const {
+    result,
+    marketInsights,
+    formattedListings,
+    loadingFormats,
+    activePlatform,
+    chips,
+    regenerating,
+    editingField,
+    addedPhotos,
+  } = state;
+
+  if (!result) return null;
+
+  const winner = marketInsights?.intelligence?.recommended_platform ?? "ebay";
   const winnerMeta = PLATFORM_META[winner];
 
   const platformListing: PlatformListing | undefined =
@@ -70,7 +51,9 @@ export function ResultsScreen({
   const isLoading = loadingFormats.has(activePlatform) && !platformListing;
 
   const tagsLabel = activePlatform === "depop" ? "Hashtags" : "Keywords";
-  const comps = marketInsights ? marketInsights.ebay.count + marketInsights.vinted.count + marketInsights.depop.count : 0;
+  const comps = marketInsights
+    ? marketInsights.ebay.count + marketInsights.vinted.count + marketInsights.depop.count
+    : 0;
   const pendingAddCount = addedPhotos.filter((a) => !a.applied).length;
 
   return (
@@ -130,7 +113,7 @@ export function ResultsScreen({
             <button
               key={p}
               type="button"
-              onClick={() => onChangePlatform(p)}
+              onClick={() => actions.setActivePlatform(p)}
               className={`flex-1 flex items-center justify-center gap-1.5 px-1.5 py-2.5 rounded-[11px] text-[13px] font-semibold transition-colors ${
                 active
                   ? "bg-app-text text-app-bg"
@@ -154,9 +137,9 @@ export function ResultsScreen({
       {/* Boost accuracy */}
       <BoostAccuracy
         added={addedPhotos}
-        onQueueAdd={onQueuePhoto}
+        onQueueAdd={actions.queuePhoto}
         pendingCount={pendingAddCount}
-        onRegenerate={onRegenWithPhotos}
+        onRegenerate={actions.regenWithPhotos}
       />
 
       {/* Caption card */}
@@ -177,9 +160,9 @@ export function ResultsScreen({
                 label="Title"
                 value={platformListing.title}
                 editing={editingField === "title"}
-                onStartEdit={() => onStartEdit("title")}
-                onCancel={onCancelEdit}
-                onCommit={(v) => onCommitEdit("title", v)}
+                onStartEdit={() => actions.startEdit("title")}
+                onCancel={actions.cancelEdit}
+                onCommit={(v) => actions.commitEdit("title", v)}
               >
                 <div className="text-[16px] font-semibold leading-snug text-app-text">
                   {platformListing.title}
@@ -193,9 +176,9 @@ export function ResultsScreen({
                 value={platformListing.description}
                 multiline
                 editing={editingField === "body"}
-                onStartEdit={() => onStartEdit("body")}
-                onCancel={onCancelEdit}
-                onCommit={(v) => onCommitEdit("body", v)}
+                onStartEdit={() => actions.startEdit("body")}
+                onCancel={actions.cancelEdit}
+                onCommit={(v) => actions.commitEdit("body", v)}
               >
                 <div className="text-[14px] leading-relaxed whitespace-pre-wrap text-app-text">
                   {platformListing.description}
@@ -271,7 +254,12 @@ export function ResultsScreen({
       )}
 
       {/* Feedback chips */}
-      <FeedbackChips applied={chips} onToggle={onToggleChip} onReset={onResetChips} />
+      <FeedbackChips
+        applied={chips}
+        onToggle={actions.toggleChip}
+        onReset={actions.resetChips}
+        platform={activePlatform}
+      />
 
       {/* Start new listing */}
       <div className="px-[22px] pt-1.5">

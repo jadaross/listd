@@ -1,12 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { buildFormatPrompt } from "@/lib/prompts";
+import { formatListing } from "@/lib/llm/format";
 import type { Listing, Platform, Tone } from "@/lib/types";
 
 export const runtime = "edge";
-
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 interface RequestBody {
   listing: Listing;
@@ -16,10 +11,7 @@ interface RequestBody {
 
 export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured" },
-      { status: 500 }
-    );
+    return Response.json({ error: "ANTHROPIC_API_KEY is not configured" }, { status: 500 });
   }
 
   let body: RequestBody;
@@ -30,7 +22,6 @@ export async function POST(request: Request) {
   }
 
   const { listing, platform, tone } = body;
-
   if (!listing || !platform || !tone) {
     return Response.json(
       { error: "listing, platform, and tone are required" },
@@ -38,33 +29,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const prompt = buildFormatPrompt(platform, tone, listing);
-
   try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const rawText =
-      response.content[0].type === "text" ? response.content[0].text : "";
-
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return Response.json(
-        { error: "Could not parse AI response", raw: rawText },
-        { status: 500 }
-      );
-    }
-
-    const result = JSON.parse(jsonMatch[0]);
+    const result = await formatListing({ listing, platform, tone });
     return Response.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return Response.json(
-      { error: `Format request failed: ${message}` },
-      { status: 500 }
-    );
+    return Response.json({ error: `Format request failed: ${message}` }, { status: 500 });
   }
 }

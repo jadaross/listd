@@ -1,7 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// In-memory cache for app-level (client credentials) token
 let _appToken: string | null = null;
 let _appTokenExpiresAt = 0;
 
@@ -38,15 +37,12 @@ export async function getAppToken(): Promise<string> {
   return _appToken;
 }
 
-// Separate cache for production market-lookup token (always hits production API)
 let _prodAppToken: string | null = null;
 let _prodAppTokenExpiresAt = 0;
 
 /**
- * Returns a client-credentials token from the *production* eBay API, regardless of
- * EBAY_ENVIRONMENT.  Uses EBAY_PROD_CLIENT_ID / EBAY_PROD_CLIENT_SECRET when set,
- * falling back to EBAY_CLIENT_ID / EBAY_CLIENT_SECRET.
- * Use this for Browse API market-data lookups which must hit production.
+ * Production client-credentials token, regardless of EBAY_ENVIRONMENT.
+ * Used for Browse API market lookups which must hit production.
  */
 export async function getProdAppToken(): Promise<string> {
   const now = Date.now();
@@ -101,7 +97,7 @@ const SCOPES = [
 export interface EbayTokenResponse {
   access_token: string;
   refresh_token: string;
-  expires_in: number; // seconds
+  expires_in: number;
   refresh_token_expires_in?: number;
   token_type: string;
 }
@@ -176,9 +172,7 @@ export async function refreshAccessToken(
 function getKey(): Buffer {
   const secret = process.env.EBAY_TOKEN_SECRET;
   if (!secret || secret.length !== 64) {
-    throw new Error(
-      "EBAY_TOKEN_SECRET must be 64 hex characters (32 bytes)"
-    );
+    throw new Error("EBAY_TOKEN_SECRET must be 64 hex characters (32 bytes)");
   }
   return Buffer.from(secret, "hex");
 }
@@ -220,14 +214,12 @@ export async function getValidAccessToken(
 
   const expiresAt = new Date(data.expires_at).getTime();
   const nowMs = Date.now();
-  const bufferMs = 5 * 60 * 1000; // 5 minute buffer
+  const bufferMs = 5 * 60 * 1000;
 
   if (nowMs + bufferMs < expiresAt) {
-    // Token still valid
     return decryptToken(data.access_token_enc);
   }
 
-  // Refresh
   const refreshToken = decryptToken(data.refresh_token_enc);
   const tokens = await refreshAccessToken(refreshToken);
   const newExpiresAt = new Date(

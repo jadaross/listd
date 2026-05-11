@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MarketInsights, Platform } from "@/lib/types";
-import { PLATFORM_META, PLATFORM_ORDER, netPrice } from "@/lib/platforms";
+import { platformMetadata as PLATFORM_META, PLATFORM_IDS as PLATFORM_ORDER, netPrice } from "@/platforms";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { StarIcon } from "@/components/ui/StarIcon";
 import { StatBlock } from "@/components/ui/StatBlock";

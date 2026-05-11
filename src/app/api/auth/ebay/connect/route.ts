@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { buildAuthUrl } from "@/lib/ebay-auth";
+import { buildAuthUrl } from "@/platforms/ebay/auth";
 
 export async function GET() {
   const cookieStore = await cookies();

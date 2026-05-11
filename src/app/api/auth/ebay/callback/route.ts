@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { exchangeCode, encryptToken } from "@/lib/ebay-auth";
+import { exchangeCode, encryptToken } from "@/platforms/ebay/auth";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

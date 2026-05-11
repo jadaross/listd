@@ -1,17 +1,25 @@
 "use client";
 
 import { CHIPS, type ChipId } from "@/lib/chip-vocab";
+import type { Platform } from "@/lib/types";
+import { platformListingSpec } from "@/platforms";
 import { Eyebrow } from "./Eyebrow";
 
 export function FeedbackChips({
   applied,
   onToggle,
   onReset,
+  platform,
 }: {
   applied: Set<ChipId>;
   onToggle: (id: ChipId) => void;
   onReset: () => void;
+  /** When set, only chips listed in the platform's spec are shown. */
+  platform?: Platform;
 }) {
+  const visible = platform
+    ? CHIPS.filter((c) => platformListingSpec[platform].relevantChips.includes(c.id))
+    : CHIPS;
   return (
     <div className="flex flex-col gap-2 pt-1.5">
       <div className="flex justify-between items-baseline px-[22px]">
@@ -28,7 +36,7 @@ export function FeedbackChips({
       </div>
       <div className="overflow-x-auto no-scrollbar">
         <div className="flex gap-2 px-[22px] py-0.5">
-          {CHIPS.map((c) => {
+          {visible.map((c) => {
             const active = applied.has(c.id);
             return (
               <button
