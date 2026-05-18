@@ -1,6 +1,7 @@
 import type { Listing, Platform, PlatformListing, Tone } from "@/lib/types";
 import { platformListingSpec, platformMetadata } from "@/platforms";
-import { MODELS, anthropicClient, extractJsonObject } from "./client";
+import { MODELS, anthropicClient } from "./client";
+import { extractJsonObject } from "./analyse-parse";
 
 export interface FormatInput {
   listing: Listing;

@@ -10,3 +10,15 @@ export function median(prices: number[]): number | null {
 export function emptyPlatformPrices(currency = "GBP") {
   return { median: null, min: null, max: null, count: 0, currency };
 }
+
+/** Builds a PlatformPriceData summary from a non-empty list of prices. */
+export function buildPriceData(prices: number[], currency = "GBP") {
+  if (!prices.length) return emptyPlatformPrices(currency);
+  return {
+    median: median(prices),
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+    count: prices.length,
+    currency,
+  };
+}

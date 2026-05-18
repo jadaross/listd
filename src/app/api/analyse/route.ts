@@ -1,4 +1,5 @@
 import { analyseListingStream } from "@/lib/llm/analyse";
+import { toStringStreamResponse } from "@/lib/streaming-text";
 import type { Platform, Tone } from "@/lib/types";
 
 export const runtime = "edge";
@@ -29,29 +30,5 @@ export async function POST(request: Request) {
     return Response.json({ error: "Maximum 20 images allowed per listing" }, { status: 400 });
   }
 
-  const textStream = analyseListingStream({ photos: images, tone, platform });
-  const encoder = new TextEncoder();
-  const sse = new ReadableStream({
-    async start(controller) {
-      const reader = textStream.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(value)}\n\n`));
-        }
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
-    },
-  });
-
-  return new Response(sse, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-    },
-  });
+  return toStringStreamResponse(analyseListingStream({ photos: images, tone, platform }));
 }

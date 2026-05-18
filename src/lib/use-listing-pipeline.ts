@@ -11,6 +11,8 @@ import type {
   Tone,
 } from "@/lib/types";
 import { instructionsFor, type ChipId } from "@/lib/chip-vocab";
+import { parseAnalysisResult } from "@/lib/llm/analyse-parse";
+import { readStringStream } from "@/lib/streaming-text";
 
 export type EditField = "title" | "body";
 export type AddedPhoto = { id: string; applied: boolean };
@@ -161,28 +163,8 @@ export function useListingPipeline(): {
       });
       if (!res.ok) throw new Error("Analyse failed");
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6);
-          if (payload === "[DONE]") break;
-          try {
-            buffer += JSON.parse(payload);
-          } catch {
-            /* skip malformed */
-          }
-        }
-      }
-
-      const jsonMatch = buffer.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Could not parse AI response");
-      const data: AnalysisResult = JSON.parse(jsonMatch[0]);
+      const buffer = await readStringStream(res);
+      const data = parseAnalysisResult(buffer);
 
       setResult(data);
       setStatus("ready");

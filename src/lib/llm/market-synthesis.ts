@@ -5,7 +5,8 @@ import type {
   PlatformReasoning,
 } from "@/lib/types";
 import { PLATFORM_IDS } from "@/platforms";
-import { MODELS, anthropicClient, extractJsonObject } from "./client";
+import { MODELS, anthropicClient } from "./client";
+import { extractJsonObject } from "./analyse-parse";
 
 export interface MarketSynthesisInput {
   brand: string;

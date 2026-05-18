@@ -1,6 +1,8 @@
 import type { AnalysisResult, Platform, Tone } from "@/lib/types";
 import { platformListingSpec } from "@/platforms";
-import { MODELS, anthropicClient, extractJsonObject } from "./client";
+import { MODELS, anthropicClient } from "./client";
+import { parseAnalysisResult } from "./analyse-parse";
+export { parseAnalysisResult };
 
 export interface AnalyseInput {
   /** base64 JPEG strings, optionally with a `data:` prefix. */
@@ -205,14 +207,3 @@ export function analyseListingStream(input: AnalyseInput): ReadableStream<string
   });
 }
 
-/**
- * Parse and lightly validate a fully-buffered model response. Throws on
- * unparsable JSON or missing top-level sections.
- */
-export function parseAnalysisResult(buffer: string): AnalysisResult {
-  const parsed = JSON.parse(extractJsonObject(buffer)) as AnalysisResult;
-  if (!parsed.listing || !parsed.photo_analysis || !parsed.tag_data) {
-    throw new Error("AnalysisResult missing required top-level fields");
-  }
-  return parsed;
-}

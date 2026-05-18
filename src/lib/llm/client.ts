@@ -17,12 +17,5 @@ export function anthropicClient(): Anthropic {
   return _client;
 }
 
-/**
- * Models sometimes wrap JSON in prose or markdown fences. Extract the first
- * balanced top-level JSON object as a string. Throws if none found.
- */
-export function extractJsonObject(text: string): string {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("No JSON object found in model output");
-  return match[0];
-}
+// `extractJsonObject` and `parseAnalysisResult` live in `./analyse-parse` so
+// that client bundles can import them without pulling the Anthropic SDK.
