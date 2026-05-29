@@ -133,3 +133,47 @@ export interface EbayConnectionStatus {
   username: string | null;
   expiresAt: number | null;
 }
+
+// ─── Scout (reseller mode) ─────────────────────────────────────────
+
+export type AppMode = "sell" | "scout";
+
+export type Verdict = "worth" | "maybe" | "skip";
+
+export type ScoutCompPlatform = "ebay" | "vinted" | "depop";
+
+export interface ScoutGuess {
+  /** Headline name of the item ("Carhartt Detroit Jacket"). */
+  title: string;
+  /** One-line breakdown shown pre-tag ("Brown duck canvas · looks 90s · size M"). */
+  guess_short: string;
+  /** Tighter restatement shown once a tag photo confirms the model. */
+  guess_tight: string;
+  /** Reseller-style search query handed to the market lookup. */
+  search_query: string;
+}
+
+export interface ScoutComp {
+  label: string;
+  price: number;
+  when: string;
+  plat: ScoutCompPlatform;
+  color: string;
+}
+
+export interface ScoutMarket {
+  range: [number, number];
+  median: number;
+  sold_30d: number;
+  weekly_sold: number[];
+  comps: ScoutComp[];
+  currency: "GBP";
+}
+
+export interface ScoutResult {
+  guess: ScoutGuess;
+  photo_analysis: PhotoAnalysis;
+  tag_data: TagData;
+  confidence_level: 1 | 2 | 3;
+  market: ScoutMarket;
+}

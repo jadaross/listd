@@ -6,10 +6,20 @@ export type Screen =
   | "generating"
   | "results"
   | "recommendation"
+  | "scout-checking"
+  | "scout-result"
   | "history"
   | "settings";
 
-const NEW_FLOW: Screen[] = ["home", "confirm", "generating", "results", "recommendation"];
+const NEW_FLOW: Screen[] = [
+  "home",
+  "confirm",
+  "generating",
+  "results",
+  "recommendation",
+  "scout-checking",
+  "scout-result",
+];
 
 export function TabBar({
   screen,

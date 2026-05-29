@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useListingPipeline } from "@/lib/use-listing-pipeline";
+import { useScoutPipeline } from "@/lib/use-scout-pipeline";
 import { RootShell } from "@/components/layout/RootShell";
 import type { Screen } from "@/components/layout/TabBar";
 import { NavHeader } from "@/components/layout/NavHeader";
@@ -11,8 +12,11 @@ import { ConfirmScreen } from "@/components/screens/ConfirmScreen";
 import { GeneratingScreen } from "@/components/screens/GeneratingScreen";
 import { ResultsScreen } from "@/components/screens/ResultsScreen";
 import { RecommendationScreen } from "@/components/screens/RecommendationScreen";
+import { ScoutCheckingScreen } from "@/components/screens/ScoutCheckingScreen";
+import { ScoutResultScreen } from "@/components/screens/ScoutResultScreen";
 import { HistoryScreen } from "@/components/screens/HistoryScreen";
 import { SettingsScreen } from "@/components/screens/SettingsScreen";
+import type { AppMode } from "@/lib/types";
 
 export default function Page() {
   return (
@@ -28,6 +32,8 @@ const VALID_SCREENS: ReadonlySet<Screen> = new Set([
   "generating",
   "results",
   "recommendation",
+  "scout-checking",
+  "scout-result",
   "history",
   "settings",
 ]);
@@ -40,6 +46,7 @@ function App() {
     return s && VALID_SCREENS.has(s) ? s : "home";
   })();
   const [screen, setScreen] = useState<Screen>(initialScreen);
+  const [mode, setMode] = useState<AppMode>("sell");
 
   // Clear ?screen=... from the URL once we've used it for initial routing.
   useEffect(() => {
@@ -48,11 +55,13 @@ function App() {
   }, []);
 
   const { state, actions } = useListingPipeline();
+  const { state: scoutState, actions: scoutActions } = useScoutPipeline();
 
   const newListing = useCallback(() => {
     actions.reset();
+    scoutActions.reset();
     setScreen("home");
-  }, [actions]);
+  }, [actions, scoutActions]);
 
   const generate = useCallback(async () => {
     setScreen("generating");
@@ -63,6 +72,34 @@ function App() {
       setScreen("home");
     }
   }, [actions]);
+
+  const runScout = useCallback(async () => {
+    setScreen("scout-checking");
+    try {
+      await scoutActions.analyse();
+      setScreen("scout-result");
+    } catch {
+      setScreen("home");
+    }
+  }, [scoutActions]);
+
+  const graduateToSell = useCallback(async () => {
+    // Reuse the photos already in the scout flow; hand them to the sell pipeline.
+    actions.selectPhotos(scoutState.photos);
+    setMode("sell");
+    setScreen("generating");
+    try {
+      await actions.analyse();
+      setScreen("results");
+    } catch {
+      setScreen("home");
+    }
+  }, [actions, scoutState.photos]);
+
+  const scanNext = useCallback(() => {
+    scoutActions.reset();
+    setScreen("home");
+  }, [scoutActions]);
 
   const cogButton = (
     <button
@@ -96,9 +133,28 @@ function App() {
       case "home":
         return { title: "", rightAction: cogButton };
       case "confirm":
-        return { title: "New listing", back: () => setScreen("home") };
+        return { title: mode === "scout" ? "Scout find" : "New listing", back: () => setScreen("home") };
       case "generating":
         return { title: "" };
+      case "scout-checking":
+        return { title: "" };
+      case "scout-result":
+        return {
+          title: "Scout",
+          back: () => {
+            scoutActions.reset();
+            setScreen("home");
+          },
+          rightAction: (
+            <button
+              type="button"
+              onClick={scanNext}
+              className="text-app-accent text-[15px] font-medium"
+            >
+              New
+            </button>
+          ),
+        };
       case "results":
         return {
           title: "",
@@ -123,7 +179,7 @@ function App() {
   })();
 
   const header =
-    screen === "generating" ? null : (
+    screen === "generating" || screen === "scout-checking" ? null : (
       <NavHeader
         title={headerCfg.title}
         serif={headerCfg.serif}
@@ -138,18 +194,44 @@ function App() {
     <RootShell screen={screen} header={header}>
       {screen === "home" && (
         <HomeScreen
+          mode={mode}
+          onModeChange={setMode}
           onPhotosSelected={(p) => {
-            actions.selectPhotos(p);
+            if (mode === "scout") {
+              scoutActions.selectPhotos(p);
+            } else {
+              actions.selectPhotos(p);
+            }
             setScreen("confirm");
           }}
         />
       )}
 
       {screen === "confirm" && (
-        <ConfirmScreen photos={state.photos} onGenerate={generate} />
+        <ConfirmScreen
+          mode={mode}
+          photos={mode === "scout" ? scoutState.photos : state.photos}
+          onGenerate={mode === "scout" ? runScout : generate}
+        />
       )}
 
       {screen === "generating" && <GeneratingScreen />}
+
+      {screen === "scout-checking" && <ScoutCheckingScreen />}
+
+      {screen === "scout-result" && scoutState.result && (
+        <ScoutResultScreen
+          result={scoutState.result}
+          photos={scoutState.photos}
+          cost={scoutState.cost}
+          setCost={scoutActions.setCost}
+          tagAdded={scoutState.tagAdded}
+          checking={scoutState.rechecking}
+          onAddTag={scoutActions.addTagPhoto}
+          onListNow={graduateToSell}
+          onScanNext={scanNext}
+        />
+      )}
 
       {screen === "results" && (
         <ResultsScreen

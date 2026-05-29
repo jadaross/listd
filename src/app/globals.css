@@ -24,6 +24,10 @@
   --color-platform-depop:  #f00d2d;
   --color-platform-ebay:   #0064d2;
 
+  --color-verdict-worth: #1f8a5b;
+  --color-verdict-maybe: #c2871b;
+  --color-verdict-skip:  #b8503f;
+
   --font-sans:  var(--font-ui), -apple-system, system-ui, sans-serif;
   --font-serif: var(--font-serif), "Instrument Serif", Georgia, serif;
   --font-mono:  var(--font-mono), ui-monospace, monospace;
