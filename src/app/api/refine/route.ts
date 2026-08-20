@@ -1,7 +1,7 @@
 import { refineListing } from "@/lib/llm/refine";
 import type { Platform, PlatformListing } from "@/lib/types";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 interface RequestBody {
   platform: Platform;

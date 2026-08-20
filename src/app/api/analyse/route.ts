@@ -2,7 +2,7 @@ import { analyseListingStream } from "@/lib/llm/analyse";
 import { toStringStreamResponse } from "@/lib/streaming-text";
 import type { Platform, Tone } from "@/lib/types";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 interface RequestBody {
   images: string[];

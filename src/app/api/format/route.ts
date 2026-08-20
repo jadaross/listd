@@ -1,7 +1,7 @@
 import { formatListing } from "@/lib/llm/format";
 import type { Listing, Platform, Tone } from "@/lib/types";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 interface RequestBody {
   listing: Listing;
