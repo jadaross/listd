@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GeneratingView: View {
-    let theme: ListdTheme
+    let theme: WattleTheme
 
     @State private var activeStep: Int = 0
     @State private var rotation: Double = 0
@@ -62,11 +62,11 @@ struct GeneratingView: View {
             .frame(width: 92, height: 92)
 
             Text("Reading your photos…")
-                .font(ListdFont.serif(28))
+                .font(WattleFont.serif(28))
                 .foregroundStyle(theme.text)
                 .padding(.top, 8)
             Text("Usually under 3 seconds. Don't close the app.")
-                .font(ListdFont.ui(13))
+                .font(WattleFont.ui(13))
                 .foregroundStyle(theme.muted)
                 .frame(maxWidth: 260)
                 .multilineTextAlignment(.center)
@@ -92,7 +92,7 @@ struct GeneratingView: View {
             .frame(width: 18, height: 18)
 
             Text(steps[i])
-                .font(ListdFont.ui(14, weight: i == activeStep ? .semibold : .regular))
+                .font(WattleFont.ui(14, weight: i == activeStep ? .semibold : .regular))
                 .foregroundStyle(i <= activeStep ? theme.text : theme.muted)
             Spacer()
         }

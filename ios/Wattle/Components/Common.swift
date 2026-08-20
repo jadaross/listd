@@ -11,8 +11,8 @@ struct Eyebrow: View {
     var body: some View {
         Text(text.uppercased())
             .font(mono
-                  ? ListdFont.mono(11, weight: .regular)
-                  : ListdFont.ui(11, weight: .semibold))
+                  ? WattleFont.mono(11, weight: .regular)
+                  : WattleFont.ui(11, weight: .semibold))
             .tracking(mono ? 1.1 : 0.9)
             .foregroundStyle(color)
     }
@@ -20,7 +20,7 @@ struct Eyebrow: View {
 
 // MARK: - Spinner
 
-struct ListdSpinner: View {
+struct WattleSpinner: View {
     var color: Color
     var size: CGFloat = 14
     @State private var rotation: Double = 0
@@ -71,7 +71,7 @@ struct StarShape: Shape {
 
 struct CopyButton: View {
     let text: String
-    var theme: ListdTheme
+    var theme: WattleTheme
     var compact: Bool = true
 
     @State private var copied = false
@@ -89,7 +89,7 @@ struct CopyButton: View {
                     Text("Copy")
                 }
             }
-            .font(ListdFont.ui(11, weight: .medium))
+            .font(WattleFont.ui(11, weight: .medium))
             .foregroundStyle(copied ? theme.accent : theme.muted)
             .padding(.horizontal, 6).padding(.vertical, 4)
         }
@@ -107,7 +107,7 @@ struct CopyButton: View {
 
 struct CopyAllButton: View {
     let text: String
-    var theme: ListdTheme
+    var theme: WattleTheme
 
     @State private var copied = false
 
@@ -118,7 +118,7 @@ struct CopyAllButton: View {
                     .font(.system(size: 12))
                 Text(copied ? "Copied all" : "Copy all")
             }
-            .font(ListdFont.ui(12, weight: .semibold))
+            .font(WattleFont.ui(12, weight: .semibold))
             .foregroundStyle(copied ? .white : theme.text)
             .padding(.horizontal, 12).padding(.vertical, 7)
             .background(copied ? theme.accent : theme.subtle, in: RoundedRectangle(cornerRadius: 9))
@@ -139,16 +139,16 @@ struct StatBlock: View {
     let label: String
     let value: String
     var dark: Bool = false
-    var theme: ListdTheme
+    var theme: WattleTheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label.uppercased())
-                .font(ListdFont.ui(10, weight: .medium))
+                .font(WattleFont.ui(10, weight: .medium))
                 .tracking(0.8)
                 .foregroundStyle(dark ? .white.opacity(0.75) : theme.muted)
             Text(value)
-                .font(ListdFont.ui(14, weight: .semibold))
+                .font(WattleFont.ui(14, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(dark ? .white : theme.text)
         }
@@ -158,7 +158,7 @@ struct StatBlock: View {
 // MARK: - Tips card (home screen)
 
 struct TipsCard: View {
-    let theme: ListdTheme
+    let theme: WattleTheme
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -170,9 +170,9 @@ struct TipsCard: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
                 )
-            (Text("4+ photos works best. ").font(ListdFont.ui(13, weight: .semibold)).foregroundColor(theme.text)
+            (Text("4+ photos works best. ").font(WattleFont.ui(13, weight: .semibold)).foregroundColor(theme.text)
              + Text("Include the brand tag — we'll auto-detect size, fabric and era.")
-                .font(ListdFont.ui(13)).foregroundColor(theme.muted))
+                .font(WattleFont.ui(13)).foregroundColor(theme.muted))
             .lineSpacing(1)
             Spacer(minLength: 0)
         }
@@ -187,7 +187,7 @@ struct TipsCard: View {
 struct FieldRow<ValueView: View>: View {
     let label: String
     let value: String
-    let theme: ListdTheme
+    let theme: WattleTheme
     var isEditable: Bool = true
     var multiline: Bool = false
     @Binding var editing: Bool
@@ -212,7 +212,7 @@ struct FieldRow<ValueView: View>: View {
                                     .font(.system(size: 10, weight: .medium))
                                 Text("Edit")
                             }
-                            .font(ListdFont.ui(11, weight: .medium))
+                            .font(WattleFont.ui(11, weight: .medium))
                             .foregroundStyle(theme.muted)
                             .padding(.horizontal, 6).padding(.vertical, 4)
                         }
@@ -228,7 +228,7 @@ struct FieldRow<ValueView: View>: View {
                 VStack(alignment: .trailing, spacing: 8) {
                     if multiline {
                         TextEditor(text: $draft)
-                            .font(ListdFont.ui(14))
+                            .font(WattleFont.ui(14))
                             .frame(minHeight: 120)
                             .padding(8)
                             .background(theme.bg)
@@ -237,7 +237,7 @@ struct FieldRow<ValueView: View>: View {
                             .scrollContentBackground(.hidden)
                     } else {
                         TextField("", text: $draft, axis: .horizontal)
-                            .font(ListdFont.ui(16, weight: .semibold))
+                            .font(WattleFont.ui(16, weight: .semibold))
                             .padding(.horizontal, 12).padding(.vertical, 10)
                             .background(theme.bg)
                             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(theme.accent, lineWidth: 1.5))
@@ -249,7 +249,7 @@ struct FieldRow<ValueView: View>: View {
                             withAnimation(.snappy(duration: 0.18)) { editing = false }
                         }
                         .buttonStyle(.plain)
-                        .font(ListdFont.ui(13, weight: .medium))
+                        .font(WattleFont.ui(13, weight: .medium))
                         .foregroundStyle(theme.text)
                         .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(theme.subtle, in: RoundedRectangle(cornerRadius: 8))
@@ -259,7 +259,7 @@ struct FieldRow<ValueView: View>: View {
                             withAnimation(.snappy(duration: 0.18)) { editing = false }
                         }
                         .buttonStyle(.plain)
-                        .font(ListdFont.ui(13, weight: .semibold))
+                        .font(WattleFont.ui(13, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(theme.accent, in: RoundedRectangle(cornerRadius: 8))

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ConfirmView: View {
     @EnvironmentObject var state: AppState
-    let theme: ListdTheme
+    let theme: WattleTheme
 
     private let cols = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
     private var photos: [PhotoRef] { MockData.photos }
@@ -11,7 +11,7 @@ struct ConfirmView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("\(photos.count) photo\(photos.count != 1 ? "s" : "") selected")
-                    .font(ListdFont.ui(24, weight: .semibold))
+                    .font(WattleFont.ui(24, weight: .semibold))
                     .foregroundStyle(theme.text)
 
                 LazyVGrid(columns: cols, spacing: 8) {
@@ -27,7 +27,7 @@ struct ConfirmView: View {
                         Image(systemName: "arrow.right")
                             .font(.system(size: 14, weight: .semibold))
                     }
-                    .font(ListdFont.ui(16, weight: .semibold))
+                    .font(WattleFont.ui(16, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)

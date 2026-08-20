@@ -121,7 +121,7 @@ final class AppState: ObservableObject {
 // MARK: - App entry
 
 @main
-struct ListdApp: App {
+struct WattleApp: App {
     @StateObject private var state = AppState()
 
     var body: some Scene {

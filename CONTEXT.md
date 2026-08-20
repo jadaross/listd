@@ -1,4 +1,4 @@
-# CONTEXT — listd domain glossary
+# CONTEXT — wattle domain glossary
 
 Definitions of the load-bearing nouns in this codebase. Use this vocabulary in code, prompts, and conversation. If a new concept earns its name during a refactor, add it here.
 

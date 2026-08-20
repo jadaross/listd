@@ -1,7 +1,7 @@
 import type { PhotoRef } from "@/lib/mock-data";
 
 /**
- * Striped placeholder tile — port of ios/Listd/Components/PhotoTile.swift.
+ * Striped placeholder tile — port of ios/Wattle/Components/PhotoTile.swift.
  * Used both as a stand-in for uploaded photos and for history thumbnails.
  */
 export function PhotoTile({

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RecommendationView: View {
     @EnvironmentObject var state: AppState
-    let theme: ListdTheme
+    let theme: WattleTheme
 
     @State private var selectedID: PlatformID = MockData.winnerID
 
@@ -42,7 +42,7 @@ struct RecommendationView: View {
                 Image(systemName: "chevron.left").font(.system(size: 11, weight: .semibold))
                 Text("Back to listing")
             }
-            .font(ListdFont.ui(13, weight: .medium))
+            .font(WattleFont.ui(13, weight: .medium))
             .foregroundStyle(theme.text)
             .padding(.horizontal, 13).padding(.vertical, 7)
             .background(theme.subtle, in: Capsule())
@@ -61,10 +61,10 @@ struct RecommendationView: View {
                 ? Text("Post on ").foregroundStyle(theme.text) + Text(selected.name).foregroundStyle(selected.color) + Text(".").foregroundStyle(theme.text)
                 : Text("How ").foregroundStyle(theme.text) + Text(selected.name).foregroundStyle(selected.color) + Text(" compares.").foregroundStyle(theme.text)
             )
-            .font(ListdFont.serif(38))
+            .font(WattleFont.serif(38))
             .lineSpacing(2)
             Text(reasoning.good)
-                .font(ListdFont.ui(14))
+                .font(WattleFont.ui(14))
                 .foregroundStyle(theme.muted)
                 .lineSpacing(2)
                 .frame(maxWidth: 320, alignment: .leading)
@@ -89,7 +89,7 @@ struct RecommendationView: View {
                         HStack(spacing: 4) {
                             StarShape().fill(.white).frame(width: 9, height: 9)
                             Text("Best")
-                                .font(ListdFont.ui(10, weight: .bold))
+                                .font(WattleFont.ui(10, weight: .bold))
                                 .tracking(0.6)
                         }
                         .foregroundStyle(.white)
@@ -102,7 +102,7 @@ struct RecommendationView: View {
                     Text("£\(Int(selected.net.rounded()))")
                         .font(.system(size: 48, weight: .bold))
                     Text("after \(selected.feeLabel) fees")
-                        .font(ListdFont.ui(14))
+                        .font(WattleFont.ui(14))
                         .opacity(0.8)
                 }
                 .foregroundStyle(.white)
@@ -136,8 +136,8 @@ struct RecommendationView: View {
                     .foregroundStyle(theme.muted)
             }
             Group {
-                Text("Trade-off: ").font(ListdFont.ui(12, weight: .semibold)).foregroundStyle(theme.text)
-                + Text(reasoning.bad).font(ListdFont.ui(12)).foregroundStyle(theme.muted)
+                Text("Trade-off: ").font(WattleFont.ui(12, weight: .semibold)).foregroundStyle(theme.text)
+                + Text(reasoning.bad).font(WattleFont.ui(12)).foregroundStyle(theme.muted)
             }
             .lineSpacing(1)
             Spacer(minLength: 0)
@@ -162,26 +162,26 @@ struct RecommendationView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
                                 Text(p.name)
-                                    .font(ListdFont.ui(14, weight: .semibold))
+                                    .font(WattleFont.ui(14, weight: .semibold))
                                     .foregroundStyle(theme.text)
                                 if p.id == winner.id {
                                     StarShape().fill(winner.color).frame(width: 11, height: 11)
                                 }
                             }
                             Text(p.audience)
-                                .font(ListdFont.ui(12))
+                                .font(WattleFont.ui(12))
                                 .foregroundStyle(theme.muted)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("£\(Int(p.net.rounded()))")
-                                .font(ListdFont.ui(16, weight: .semibold))
+                                .font(WattleFont.ui(16, weight: .semibold))
                                 .foregroundStyle(theme.text)
                             HStack(spacing: 3) {
                                 Text("\(p.sellRate)% sells")
                                 Image(systemName: "chevron.right").font(.system(size: 8, weight: .semibold))
                             }
-                            .font(ListdFont.ui(11))
+                            .font(WattleFont.ui(11))
                             .foregroundStyle(theme.muted)
                         }
                     }
@@ -205,7 +205,7 @@ struct RecommendationView: View {
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .font(ListdFont.ui(15, weight: .semibold))
+            .font(WattleFont.ui(15, weight: .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)

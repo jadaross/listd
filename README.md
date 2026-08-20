@@ -1,4 +1,4 @@
-# Listd
+# Wattle
 
 AI-powered listing generator for Vinted, Depop, and eBay. Upload photos of your clothes, get a photo critique, tag reading, market-priced listing, and a recommendation on which platform will sell it fastest — all in seconds.
 

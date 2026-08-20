@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 /**
  * Per-field row inside the caption card.
  * Renders an "EDIT" / "COPY" toolbar; on Edit, swaps to an inline input/textarea
- * with Save / Cancel. Port of ios/Listd/Components/Common.swift FieldRow.
+ * with Save / Cancel. Port of ios/Wattle/Components/Common.swift FieldRow.
  */
 export function FieldRow({
   label,

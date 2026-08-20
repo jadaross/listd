@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Warm direction (default per prototype tweaks) — electric blue accent
-struct ListdTheme {
+struct WattleTheme {
     let bg:     Color
     let card:   Color
     let text:   Color
@@ -10,7 +10,7 @@ struct ListdTheme {
     let subtle: Color
     let accent: Color
 
-    static let warm = ListdTheme(
+    static let warm = WattleTheme(
         bg:     Color(hex: 0xF6F2EB),
         card:   .white,
         text:   Color(hex: 0x1C1A16),
@@ -24,10 +24,10 @@ struct ListdTheme {
 // Font helpers — falls back to system serif (NewYork) until Instrument Serif is bundled.
 // To use Instrument Serif: drop the TTF into the app target, list it in Info.plist
 // under UIAppFonts, and set `useInstrumentSerif = true` below.
-enum ListdFont {
+enum WattleFont {
     static let useInstrumentSerif = false
 
-    /// Used for the "listd." wordmark and other expressive headlines
+    /// Used for the "wattle." wordmark and other expressive headlines
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         if useInstrumentSerif {
             return .custom("InstrumentSerif", size: size)

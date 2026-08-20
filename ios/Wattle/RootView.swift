@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var state: AppState
-    private let theme = ListdTheme.warm
+    private let theme = WattleTheme.warm
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -17,7 +17,7 @@ struct RootView: View {
             .transition(.opacity)
 
             if !hideTabBar {
-                ListdTabBar(screen: $state.screen, theme: theme)
+                WattleTabBar(screen: $state.screen, theme: theme)
                     .transition(.move(edge: .bottom))
             }
         }
@@ -34,7 +34,7 @@ struct RootView: View {
                 }.opacity(0).frame(width: 60)
                 Spacer()
                 Text(headerTitle)
-                    .font(headerTitle == "listd" ? ListdFont.serif(22) : ListdFont.ui(17, weight: .semibold))
+                    .font(headerTitle == "wattle" ? WattleFont.serif(22) : WattleFont.ui(17, weight: .semibold))
                     .foregroundStyle(theme.text)
                 Spacer()
                 Color.clear.frame(width: 60)
@@ -51,14 +51,14 @@ struct RootView: View {
                             .font(.system(size: 16, weight: .semibold))
                         if let lbl = backLabel { Text(lbl) }
                     }
-                    .font(ListdFont.ui(16, weight: .medium))
+                    .font(WattleFont.ui(16, weight: .medium))
                     .foregroundStyle(theme.accent)
                 }
                 .buttonStyle(.plain)
                 .frame(width: 80, alignment: .leading)
                 Spacer()
                 Text(headerTitle)
-                    .font(ListdFont.ui(17, weight: .semibold))
+                    .font(WattleFont.ui(17, weight: .semibold))
                     .foregroundStyle(theme.text)
                 Spacer()
                 trailing
@@ -76,7 +76,7 @@ struct RootView: View {
 
     private var headerTitle: String {
         switch state.screen {
-        case .home:           return "listd"
+        case .home:           return "wattle"
         case .confirm:        return "New listing"
         case .generating:     return ""
         case .results:        return "Listings"
@@ -95,7 +95,7 @@ struct RootView: View {
         if case .results = state.screen {
             Button(action: state.newListing) {
                 Text("New")
-                    .font(ListdFont.ui(15, weight: .medium))
+                    .font(WattleFont.ui(15, weight: .medium))
                     .foregroundStyle(theme.accent)
             }
             .buttonStyle(.plain)

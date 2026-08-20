@@ -1,4 +1,4 @@
-# Listd — Manual Setup Steps
+# Wattle — Manual Setup Steps
 
 ## What's already done
 - `ANTHROPIC_API_KEY` — analysis + market intelligence
@@ -72,10 +72,10 @@ eBay requires a named redirect URI — you can't just pass a raw URL.
    ```
    http://localhost:3001/api/auth/ebay/callback
    ```
-4. Give it any name, e.g. `listd-local`
-5. Copy the **RuName** value (looks like `Firstname_Lastname-listd-l-abcdef`) into `.env.local`:
+4. Give it any name, e.g. `wattle-local`
+5. Copy the **RuName** value (looks like `Firstname_Lastname-wattle-l-abcdef`) into `.env.local`:
    ```
-   EBAY_RU_NAME=Firstname_Lastname-listd-l-abcdef
+   EBAY_RU_NAME=Firstname_Lastname-wattle-l-abcdef
    ```
 
 ### Generate the token encryption secret

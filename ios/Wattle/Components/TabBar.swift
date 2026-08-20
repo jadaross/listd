@@ -1,9 +1,9 @@
 import SwiftUI
 
-struct ListdTabBar: View {
+struct WattleTabBar: View {
     enum Tab: String { case new, listings, you }
     @Binding var screen: Screen
-    let theme: ListdTheme
+    let theme: WattleTheme
 
     private var activeTab: Tab {
         switch screen {
@@ -44,7 +44,7 @@ struct ListdTabBar: View {
         } label: {
             VStack(spacing: 3) {
                 icon
-                Text(label).font(ListdFont.ui(10, weight: .medium))
+                Text(label).font(WattleFont.ui(10, weight: .medium))
             }
             .foregroundStyle(activeTab == tab ? theme.accent : theme.muted)
             .frame(maxWidth: .infinity)

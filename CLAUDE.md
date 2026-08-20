@@ -22,7 +22,7 @@ Mobile-first Next.js 15 app (App Router). The web UI mirrors the native iOS app 
 
 ### Screen flow
 
-`src/app/page.tsx` is a thin screen-router driven by an `AppState` mirroring `ios/Listd/ListdApp.swift`:
+`src/app/page.tsx` is a thin screen-router driven by an `AppState` mirroring `ios/Wattle/WattleApp.swift`:
 
 ```
 home → confirm → generating → results → recommendation
@@ -51,15 +51,15 @@ All routes call the Anthropic SDK (`@anthropic-ai/sdk`); SerpAPI is used for liv
 | `src/lib/types.ts` | All shared TypeScript types |
 | `src/lib/prompts.ts` | `buildPrompt`, `buildNeutralPrompt`, `buildFormatPrompt`, `buildRefinePrompt` — every prompt lives here |
 | `src/app/page.tsx` | App state machine + screen router |
-| `src/components/screens/*` | One file per screen; each is a port of `ios/Listd/Screens/*.swift` |
+| `src/components/screens/*` | One file per screen; each is a port of `ios/Wattle/Screens/*.swift` |
 | `src/components/ui/*` | Shared primitives (`PhotoTile`, `FieldRow`, `FeedbackChips`, `BoostAccuracy`, etc.) |
 | `src/components/layout/*` | `RootShell`, `NavHeader`, `TabBar` |
 | `ios/` | Native SwiftUI app — must stay in sync with the web on flows and copy |
 
 ### Prompt design
 
-`buildPrompt` returns a **single JSON object** covering three concerns in one pass: photo quality scoring, tag/label OCR (`tag_data`), and the full listing. Description length is platform-conditional. `buildRefinePrompt` accepts a `PlatformListing` + list of natural-language refinements (one per chip the user tapped) and returns just the `PlatformListing`. The chip vocabulary is shared with iOS — see `FeedbackChip` in `ios/Listd/Models.swift`.
+`buildPrompt` returns a **single JSON object** covering three concerns in one pass: photo quality scoring, tag/label OCR (`tag_data`), and the full listing. Description length is platform-conditional. `buildRefinePrompt` accepts a `PlatformListing` + list of natural-language refinements (one per chip the user tapped) and returns just the `PlatformListing`. The chip vocabulary is shared with iOS — see `FeedbackChip` in `ios/Wattle/Models.swift`.
 
 ### Theme
 
-Warm direction matches the iOS prototype: `--bg #f6f2eb`, `--card #fff`, `--text #1c1a16`, `--muted #86807a`, `--subtle #efebe3`, `--accent #3b5cff`. Fonts: **Instrument Serif** for the `listd.` wordmark + expressive headlines, **Geist** for everything else (loaded via `next/font/google`).
+Warm direction matches the iOS prototype: `--bg #f6f2eb`, `--card #fff`, `--text #1c1a16`, `--muted #86807a`, `--subtle #efebe3`, `--accent #3b5cff`. Fonts: **Instrument Serif** for the `wattle.` wordmark + expressive headlines, **Geist** for everything else (loaded via `next/font/google`).

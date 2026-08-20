@@ -22,7 +22,7 @@ async function publishListing({
   accessToken: string;
   isSandbox: boolean;
 }): Promise<PlatformPublishResult> {
-  const sku = `listd-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const sku = `wattle-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const condition = CONDITION_MAP[listing.condition] ?? "GOOD";
 
   const cats = getCategories(

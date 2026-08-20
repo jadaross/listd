@@ -1,5 +1,5 @@
 // Mock data shared by stub screens (History, Settings, photo placeholders).
-// Mirrors ios/Listd/Models.swift MockData where it matches.
+// Mirrors ios/Wattle/Models.swift MockData where it matches.
 
 export interface PhotoRef {
   id: number;
