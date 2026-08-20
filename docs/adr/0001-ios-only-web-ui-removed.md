@@ -5,5 +5,5 @@ wattle began as a Next.js web app with a SwiftUI prototype mirroring it. The pro
 ## Consequences
 
 - The `ios/` SwiftUI files are a **visual reference, not a foundation**. They are entirely mock-driven, with no networking, and their single-god-object state model will not survive real async work. Keep the theme and layout; rewrite the app.
-- **Scout mode is deferred to v2**, not cancelled. Its code was removed from the working tree rather than left to rot; see ADR-0004 for why rebuilding it is cheap, and the deletion commit for retrieval.
+- **Scout mode is deferred to v2**, not cancelled. Its code was removed from the working tree rather than left to rot; see ADR-0004 for why rebuilding it is cheap. The last commit containing it is `482ffbb`; retrieve with `git show 482ffbb:src/lib/scout/derive.ts` or `git checkout 482ffbb -- src/lib/scout src/app/api/scout`.
 - Sell mode is the whole of v1.

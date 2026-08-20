@@ -3,14 +3,9 @@ import { platformMetadata } from "./registry";
 
 export type { Platform } from "@/lib/types";
 export * from "./types";
-export {
-  platformMetadata,
-  platformListingSpec,
-  platformMarket,
-  platformPublish,
-} from "./registry";
+export { platformMetadata, platformListingSpec } from "./registry";
 
-/** The canonical platform ordering used by every UI surface. */
+/** The canonical platform ordering. */
 export const PLATFORM_IDS: readonly Platform[] = ["vinted", "depop", "ebay"];
 
 /** Convert a list price into a take-home estimate after platform fees. */
