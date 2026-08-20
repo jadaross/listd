@@ -63,3 +63,17 @@ All routes call the Anthropic SDK (`@anthropic-ai/sdk`); SerpAPI is used for liv
 ### Theme
 
 Warm direction matches the iOS prototype: `--bg #f6f2eb`, `--card #fff`, `--text #1c1a16`, `--muted #86807a`, `--subtle #efebe3`, `--accent #3b5cff`. Fonts: **Instrument Serif** for the `wattle.` wordmark + expressive headlines, **Geist** for everything else (loaded via `next/font/google`).
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `jadaross/wattle`, driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
