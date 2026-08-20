@@ -19,8 +19,7 @@ they are before making architectural changes.
 ```bash
 npm run dev      # Start dev server (Turbopack)
 npm run build    # Production build + type-check
-npm run lint     # BROKEN — `next lint` was removed in Next 16, and .eslintrc.json
-                 # predates ESLint 9 flat config. Needs eslint.config.js.
+npm run lint     # ESLint (flat config, eslint.config.mjs)
 ```
 
 No test suite exists yet. Type-checking is done via `npm run build`.
