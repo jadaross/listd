@@ -77,3 +77,53 @@ export interface AnalysisResult {
   tag_data: TagData;
   listing: Listing;
 }
+
+// ─── Valuation ─────────────────────────────────────────────────────
+// See CONTEXT.md for the vocabulary and docs/adr/0004 + 0005 for why this
+// shape is what it is. In short: asking prices, never sold prices; a band
+// per platform, never a single number; and an interface a paid comps feed
+// could sit behind without any caller noticing.
+
+/** How much the Comparables agree. Low is a real answer, not a failure. */
+export type Confidence = "low" | "medium" | "high";
+
+/**
+ * The subset of a Neutral Listing a Valuation actually needs. Deliberately
+ * narrower than `Listing` so Scout can value an item it has only glanced at.
+ */
+export interface ValuationItem {
+  brand: string;
+  clothing_type: string;
+  size: string;
+  condition: Condition;
+  colour_primary?: string;
+  material?: string;
+}
+
+/** A currently-listed item similar enough to inform value. An ASKING price. */
+export interface Comparable {
+  title: string;
+  /** What the seller is asking today — not what anything sold for. */
+  price: number;
+  currency: string;
+  platform: Platform | "other";
+  url?: string;
+}
+
+/** A low-to-high range for one platform. Never collapse this to one number. */
+export interface PriceBand {
+  low: number;
+  high: number;
+  currency: string;
+  confidence: Confidence;
+  comparables: Comparable[];
+  /** One sentence a UI can show verbatim. Says "listed at", never "sells for". */
+  reasoning: string;
+}
+
+/** The answer to "what is this item worth?" — one band per Enabled Platform. */
+export interface Valuation {
+  perPlatform: Partial<Record<Platform, PriceBand>>;
+  /** The search phrasing used, exposed so a user can sanity-check the result. */
+  query: string;
+}

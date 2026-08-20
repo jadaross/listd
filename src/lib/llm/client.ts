@@ -4,7 +4,7 @@ export const MODELS = {
   analyse: "claude-sonnet-4-6",
   format: "claude-haiku-4-5-20251001",
   refine: "claude-haiku-4-5-20251001",
-  marketSynthesis: "claude-haiku-4-5-20251001",
+  valuation: "claude-opus-5",
 } as const;
 
 let _client: Anthropic | null = null;
