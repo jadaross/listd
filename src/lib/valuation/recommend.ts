@@ -1,0 +1,88 @@
+import type { Confidence, Platform, PriceBand, Recommendation, Valuation } from "@/lib/types";
+import { netPrice, platformMetadata } from "@/platforms";
+
+/**
+ * Picks the Enabled Platform to post on.
+ *
+ * The ranking signal is the Price Band weighted by how readily the item sells
+ * there — deliberately NOT net-after-fees. Vinted charges sellers 0% against
+ * Depop's 10% and eBay's 13.25%, so ranking on net would return Vinted every
+ * single time and this function would be a constant with a paragraph attached.
+ * Fees are applied afterwards, for display only. See ADR-0004.
+ */
+
+const LIKELIHOOD_WEIGHT: Record<Confidence, number> = {
+  high: 1,
+  medium: 0.8,
+  low: 0.6,
+};
+
+/** Confidence breaks ties: between two equal scores, prefer the surer band. */
+const CONFIDENCE_RANK: Record<Confidence, number> = { high: 3, medium: 2, low: 1 };
+
+export function midpoint(band: PriceBand): number {
+  return Math.round((band.low + band.high) / 2);
+}
+
+export function score(band: PriceBand): number {
+  return midpoint(band) * LIKELIHOOD_WEIGHT[band.sell_likelihood];
+}
+
+/**
+ * Returns null when there is nothing to choose between — a single Enabled
+ * Platform means no comparison work runs at all, by design.
+ */
+export function recommend(valuation: Valuation): Recommendation | null {
+  const entries = Object.entries(valuation.perPlatform) as Array<[Platform, PriceBand]>;
+  if (entries.length < 2) return null;
+
+  const ranked = [...entries].sort(([aId, a], [bId, b]) => {
+    const byScore = score(b) - score(a);
+    if (byScore !== 0) return byScore;
+    const byConfidence = CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence];
+    if (byConfidence !== 0) return byConfidence;
+    // Last resort, so the answer is at least stable across identical inputs.
+    return aId.localeCompare(bId);
+  });
+
+  const [winnerId, winner] = ranked[0];
+  const listAt = midpoint(winner);
+
+  return {
+    platform: winnerId,
+    listAt,
+    net: Math.round(netPrice(listAt, winnerId)),
+    currency: winner.currency,
+    reasoning: explain(winnerId, winner, ranked.slice(1)),
+    runnersUp: ranked.slice(1).map(([id, band]) => ({
+      platform: id,
+      listAt: midpoint(band),
+      net: Math.round(netPrice(midpoint(band), id)),
+    })),
+  };
+}
+
+function explain(
+  winnerId: Platform,
+  winner: PriceBand,
+  rest: Array<[Platform, PriceBand]>
+): string {
+  const name = platformMetadata[winnerId].name;
+  const listAt = midpoint(winner);
+  const fee = platformMetadata[winnerId].feePct;
+  const feeNote = fee === 0 ? "and takes no seller fee" : `less its ${platformMetadata[winnerId].feeLabel} fee`;
+
+  if (rest.length === 0) return `${name} is the only platform with a usable valuation.`;
+
+  const [runnerUpId, runnerUp] = rest[0];
+  const runnerUpName = platformMetadata[runnerUpId].name;
+  const diff = listAt - midpoint(runnerUp);
+
+  if (diff > 0) {
+    return `Similar items are listed around £${listAt} on ${name} — about £${diff} above ${runnerUpName} — ${feeNote}.`;
+  }
+  if (winner.sell_likelihood !== runnerUp.sell_likelihood) {
+    return `${name} lists around £${listAt}, and this kind of item moves more readily there than on ${runnerUpName} — ${feeNote}.`;
+  }
+  return `${name} lists around £${listAt}, on par with ${runnerUpName}, ${feeNote}.`;
+}

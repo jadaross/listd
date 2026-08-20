@@ -24,6 +24,7 @@ const band = {
   high: 85,
   currency: "GBP",
   confidence: "high",
+  sell_likelihood: "medium",
   reasoning: "Similar Detroit jackets are listed at £55–£85.",
   comparables: [
     { title: "Carhartt Detroit M", price: 60, currency: "GBP", platform: "vinted", url: "https://x" },
@@ -67,7 +68,16 @@ describe("buildValuationPrompt", () => {
   });
 
   it("instructs low confidence rather than a confident guess", () => {
-    expect(buildValuationPrompt(item, "ebay")).toMatch(/fewer than three .*"low" confidence/s);
+    const prompt = buildValuationPrompt(item, "ebay");
+    expect(prompt).toContain("fewer than three");
+    expect(prompt).toContain('"low" confidence');
+    expect(prompt).toContain("a confident guess is not");
+  });
+
+  it("distinguishes price confidence from sell likelihood", () => {
+    const prompt = buildValuationPrompt(item, "vinted");
+    expect(prompt).toContain("how sure you are of the PRICE");
+    expect(prompt).toContain("how readily this kind of item MOVES");
   });
 
   it("carries the item through", () => {

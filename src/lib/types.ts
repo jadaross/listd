@@ -116,6 +116,12 @@ export interface PriceBand {
   high: number;
   currency: string;
   confidence: Confidence;
+  /**
+   * How readily this kind of item moves on this platform. Distinct from
+   * `confidence`, which is about how sure we are of the price — an item can
+   * have a well-established price and still sell slowly.
+   */
+  sell_likelihood: Confidence;
   comparables: Comparable[];
   /** One sentence a UI can show verbatim. Says "listed at", never "sells for". */
   reasoning: string;
@@ -126,4 +132,20 @@ export interface Valuation {
   perPlatform: Partial<Record<Platform, PriceBand>>;
   /** The search phrasing used, exposed so a user can sanity-check the result. */
   query: string;
+}
+
+/**
+ * Which Enabled Platform to post on. Only exists when more than one platform
+ * is enabled — with one there is nothing to choose between, and no comparison
+ * work runs at all. See ADR-0004.
+ */
+export interface Recommendation {
+  platform: Platform;
+  /** Midpoint of the winning band — what to actually ask. */
+  listAt: number;
+  /** Take-home after that platform's fee. Applied after ranking, never as the ranking signal. */
+  net: number;
+  currency: string;
+  reasoning: string;
+  runnersUp: Array<{ platform: Platform; listAt: number; net: number }>;
 }

@@ -15,6 +15,7 @@ function bandFor(platform: Platform): PriceBand {
     high: 80,
     currency: "GBP",
     confidence: "medium",
+    sell_likelihood: "medium",
     comparables: [{ title: `${platform} comp`, price: 60, currency: "GBP", platform }],
     reasoning: `Listed at £50–£80 on ${platform}.`,
   };

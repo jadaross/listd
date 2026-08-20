@@ -46,6 +46,7 @@ Return ONLY a valid JSON object — no markdown fences, no commentary:
   "high": 0,
   "currency": "GBP",
   "confidence": "low" | "medium" | "high",
+  "sell_likelihood": "low" | "medium" | "high",
   "reasoning": "",
   "comparables": [
     { "title": "", "price": 0, "currency": "GBP", "platform": "${platform}", "url": "" }
@@ -54,7 +55,8 @@ Return ONLY a valid JSON object — no markdown fences, no commentary:
 
 Rules:
 - "low" and "high" bracket what this item could sensibly be listed at on ${meta.name}. Never return low === high.
-- "confidence": "high" only when several close comparables agree; "medium" when they roughly agree or are loosely comparable; "low" when they are few, scattered, or only tangentially similar.
+- "confidence": how sure you are of the PRICE. "high" only when several close comparables agree; "medium" when they roughly agree or are loosely comparable; "low" when they are few, scattered, or only tangentially similar.
+- "sell_likelihood": how readily this kind of item MOVES on ${meta.name}, judged from how many people are listing and buying it there. This is a different question from confidence — a common item can have a very well-established price and still sit unsold, and a rare one can be hard to price but sell the day it goes up.
 - "reasoning": one sentence, phrased as asking prices — e.g. "Similar Carhartt Detroit jackets in this size are listed at £55–£85." Never write "sells for".
 - "comparables": up to 5, each a real listing you found.`;
 }
@@ -64,6 +66,7 @@ interface RawBand {
   high?: unknown;
   currency?: unknown;
   confidence?: unknown;
+  sell_likelihood?: unknown;
   reasoning?: unknown;
   comparables?: unknown;
 }
@@ -98,6 +101,9 @@ export function coerceBand(raw: RawBand): PriceBand {
   const stated = CONFIDENCE.has(String(raw.confidence))
     ? (raw.confidence as PriceBand["confidence"])
     : "low";
+  const likelihood = CONFIDENCE.has(String(raw.sell_likelihood))
+    ? (raw.sell_likelihood as PriceBand["sell_likelihood"])
+    : "medium";
 
   return {
     low,
@@ -105,6 +111,7 @@ export function coerceBand(raw: RawBand): PriceBand {
     currency: typeof raw.currency === "string" ? raw.currency : "GBP",
     // A band with nothing behind it cannot honestly be called confident.
     confidence: comparables.length === 0 ? "low" : stated,
+    sell_likelihood: likelihood,
     comparables,
     reasoning: typeof raw.reasoning === "string" ? raw.reasoning : "",
   };

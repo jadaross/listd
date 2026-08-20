@@ -1,4 +1,4 @@
-import { valuate } from "@/lib/valuation";
+import { recommend, valuate } from "@/lib/valuation";
 import { PLATFORM_IDS } from "@/platforms";
 import type { Platform, ValuationItem } from "@/lib/types";
 
@@ -42,7 +42,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    return Response.json(await valuate(item, platforms));
+    const valuation = await valuate(item, platforms);
+    // Null with a single Enabled Platform — there is nothing to choose
+    // between, and no comparison work runs. See ADR-0004.
+    return Response.json({ ...valuation, recommendation: recommend(valuation) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return Response.json({ error: `Valuation failed: ${message}` }, { status: 500 });

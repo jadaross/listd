@@ -6,6 +6,7 @@ import type { ValuationProvider } from "./provider";
 export type { ValuationProvider } from "./provider";
 export { clearCache } from "./cache";
 export { askingPriceProvider } from "./asking-price";
+export { recommend, midpoint, score } from "./recommend";
 
 /**
  * Answers "what is this item worth?" — nothing more. It does not decide where

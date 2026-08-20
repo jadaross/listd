@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const valuate = vi.fn();
-vi.mock("@/lib/valuation", () => ({ valuate }));
+const recommend = vi.fn();
+vi.mock("@/lib/valuation", () => ({ valuate, recommend }));
 
 const { POST } = await import("./route");
 
@@ -19,6 +20,7 @@ const valuation = {
       high: 85,
       currency: "GBP",
       confidence: "high",
+      sell_likelihood: "high",
       comparables: [],
       reasoning: "Listed at £55–£85.",
     },
@@ -36,14 +38,28 @@ function post(body: unknown, raw?: string) {
 
 beforeEach(() => {
   valuate.mockReset();
+  recommend.mockReset();
   valuate.mockResolvedValue(valuation);
+  recommend.mockReturnValue(null);
 });
 
 describe("POST /api/valuate", () => {
   it("returns the valuation", async () => {
     const res = await POST(post({ item, platforms: ["vinted"] }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(valuation);
+    expect(await res.json()).toEqual({ ...valuation, recommendation: null });
+  });
+
+  it("returns a null recommendation for a single platform", async () => {
+    const res = await POST(post({ item, platforms: ["vinted"] }));
+    expect((await res.json()).recommendation).toBeNull();
+  });
+
+  it("includes the recommendation when there is one", async () => {
+    const rec = { platform: "depop", listAt: 70, net: 63, currency: "GBP", reasoning: "x", runnersUp: [] };
+    recommend.mockReturnValue(rec);
+    const res = await POST(post({ item, platforms: ["vinted", "depop"] }));
+    expect((await res.json()).recommendation).toEqual(rec);
   });
 
   it("passes the enabled platforms through", async () => {
