@@ -1,0 +1,109 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { analysisResult, textMessage, textStream } from "@/test/fixtures";
+import { readStringStream, toStringStreamResponse } from "@/lib/streaming-text";
+
+const create = vi.fn();
+vi.mock("./client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./client")>()),
+  anthropicClient: () => ({ messages: { create } }),
+}));
+
+const { analyseListing, analyseListingStream } = await import("./analyse");
+
+const PHOTO = "data:image/jpeg;base64,AAAA";
+
+function lastCall() {
+  return create.mock.calls.at(-1)![0];
+}
+
+beforeEach(() => {
+  create.mockReset();
+  create.mockResolvedValue(textMessage(JSON.stringify(analysisResult)));
+});
+
+describe("analyseListing — prompt", () => {
+  it("sends one image block per photo, plus the text block", async () => {
+    await analyseListing({ photos: [PHOTO, PHOTO, PHOTO], tone: "casual" });
+    const content = lastCall().messages[0].content;
+    expect(content.filter((b: { type: string }) => b.type === "image")).toHaveLength(3);
+    expect(content.at(-1).type).toBe("text");
+  });
+
+  it("asks for all three sections in one pass", async () => {
+    await analyseListing({ photos: [PHOTO], tone: "casual" });
+    const prompt = lastCall().messages[0].content.at(-1).text as string;
+    expect(prompt).toContain("photo_analysis");
+    expect(prompt).toContain("tag_data");
+    expect(prompt).toContain("listing");
+  });
+
+  it("builds a different prompt when a platform is supplied", async () => {
+    await analyseListing({ photos: [PHOTO], tone: "casual" });
+    const neutral = lastCall().messages[0].content.at(-1).text;
+    await analyseListing({ photos: [PHOTO], tone: "casual", platform: "vinted" });
+    expect(lastCall().messages[0].content.at(-1).text).not.toBe(neutral);
+  });
+
+  it("uses the analyse model", async () => {
+    const { MODELS } = await import("./client");
+    await analyseListing({ photos: [PHOTO], tone: "casual" });
+    expect(lastCall().model).toBe(MODELS.analyse);
+  });
+});
+
+describe("analyseListing — response handling", () => {
+  it("returns a parsed AnalysisResult", async () => {
+    expect(await analyseListing({ photos: [PHOTO], tone: "casual" })).toEqual(analysisResult);
+  });
+
+  it("throws when the model returns an incomplete result", async () => {
+    create.mockResolvedValue(textMessage(JSON.stringify({ listing: {} })));
+    await expect(analyseListing({ photos: [PHOTO], tone: "casual" })).rejects.toThrow(
+      /missing required/
+    );
+  });
+});
+
+describe("analyseListingStream", () => {
+  it("streams deltas that reassemble into the full payload", async () => {
+    const payload = JSON.stringify(analysisResult);
+    const chunks = payload.match(/.{1,40}/g) ?? [];
+    create.mockResolvedValue(textStream(chunks));
+
+    const assembled = await readStringStream(
+      toStringStreamResponse(analyseListingStream({ photos: [PHOTO], tone: "casual" }))
+    );
+    expect(JSON.parse(assembled)).toEqual(analysisResult);
+  });
+
+  it("requests a streaming completion", async () => {
+    create.mockResolvedValue(textStream(["{}"]));
+    await readStringStream(
+      toStringStreamResponse(analyseListingStream({ photos: [PHOTO], tone: "casual" }))
+    );
+    expect(lastCall().stream).toBe(true);
+  });
+
+  it("ignores non-text deltas", async () => {
+    create.mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield { type: "message_start" };
+        yield { type: "content_block_delta", delta: { type: "text_delta", text: "kept" } };
+        yield { type: "content_block_stop" };
+      },
+    });
+    const assembled = await readStringStream(
+      toStringStreamResponse(analyseListingStream({ photos: [PHOTO], tone: "casual" }))
+    );
+    expect(assembled).toBe("kept");
+  });
+
+  it("surfaces an API failure as a stream error", async () => {
+    create.mockRejectedValue(new Error("rate limited"));
+    await expect(
+      readStringStream(
+        toStringStreamResponse(analyseListingStream({ photos: [PHOTO], tone: "casual" }))
+      )
+    ).rejects.toThrow();
+  });
+});
