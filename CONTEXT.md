@@ -1,55 +1,71 @@
 # CONTEXT — wattle domain glossary
 
-Definitions of the load-bearing nouns in this codebase. Use this vocabulary in code, prompts, and conversation. If a new concept earns its name during a refactor, add it here.
+wattle values a secondhand item from photographs and tells the user what to write, where to post it, and what to ask for it.
 
-## Photo
+This is a glossary, not a spec. Use this vocabulary in code, prompts, and conversation. If a new concept earns its name during a refactor, add it here. Architectural decisions live in `docs/adr/`.
 
-A single image the user has selected. Has a `previewUrl` (object URL for the browser) and a `compressed` base64 JPEG (max 1024px, sent to the model). Defined in `src/lib/types.ts`.
+## The item
 
-## Neutral Listing
+**Item**:
+The physical thing being sold or considered — a jacket, a pair of boots. Exists in the world, not in the database.
+_Avoid_: product, SKU, listing (a listing is what you write *about* an Item)
 
-The platform-agnostic representation of an item — brand, type, colour, condition, size, material, title, description, hashtags, price range, gender, category, subcategory. Output of `/api/analyse`. The single source of truth that platform formatters work from. Type: `Listing` in `src/lib/types.ts`.
+**Photo**:
+One image of an Item, taken or chosen by the user.
 
-## Platform-formatted Listing
+**Neutral Listing**:
+The platform-agnostic description of an Item — brand, type, colour, condition, size, material — derived from its Photos. The single source of truth every platform's wording is generated from.
+_Avoid_: base listing, generic listing
 
-A Neutral Listing rewritten for one specific platform (Vinted / Depop / eBay) — different title length conventions, hashtag conventions, descriptive style. Plus a `fields` array of dropdown values (Vinted's "Parcel size", eBay's "Department", etc.). Output of `/api/format` and `/api/refine`. Type: `PlatformListing` in `src/lib/types.ts`.
+**Platform-formatted Listing**:
+A Neutral Listing rewritten in one Platform's voice and conventions, plus the dropdown values that Platform requires.
+_Avoid_: caption, post, formatted copy
 
-## Market Intelligence
+**Refinement Chip**:
+A one-tap instruction the user applies to a Platform-formatted Listing — "shorter", "stress condition", "add measurements".
+_Avoid_: tweak, filter, tag
 
-The Anthropic synthesis of live market data into a recommendation. Picks a winning platform, sets a recommended price, estimates sell likelihood, and gives per-platform upside / trade-off / sell time / views. Type: `MarketIntelligence` in `src/lib/types.ts`. Produced by `/api/market`.
+## Platforms
 
-## Refinement Chip
+**Platform**:
+A resale destination — Vinted, Depop, or eBay. wattle writes for them and values against them; it does not post to them.
+_Avoid_: marketplace, channel, site
 
-A natural-language instruction the user can toggle on the active Platform-formatted Listing — "shorter", "+ measurements", "stress condition", etc. Each chip has a fixed `instruction` string sent to `/api/refine`. Chip vocabulary is shared with iOS (`chip-vocab.ts` ↔ `Models.swift`). Defined in `src/lib/chip-vocab.ts`.
+**Enabled Platform**:
+A Platform the user has told us they actually sell on. Only Enabled Platforms are valued, and only they can be recommended.
 
-## Platform
+## Valuation
 
-A target resale destination — currently `"vinted" | "depop" | "ebay"`. The Platform module (`src/platforms/`) groups all knowledge about a platform into sliced capabilities. The string is the key; the slices are the implementation.
+**Valuation**:
+The answer to *what is this Item worth?* — one Price Band per Enabled Platform, with the Comparables that justify it. Deliberately independent of why the question was asked, so both modes can use it.
+_Avoid_: market intelligence, pricing, appraisal
 
-### Platform slices
+**Comparable**:
+A currently-listed item, similar enough to the user's Item to inform its value. What someone is **asking** today — not what anything sold for. wattle has no access to sold prices; see ADR-0005.
+_Avoid_: comp, sold comp, match
 
-Each platform lives in `src/platforms/<id>/` with the following files:
+**Price Band**:
+A low-to-high range an Item could reasonably be listed at on one Platform. Always a range, never a single number.
+_Avoid_: price, estimate, valuation (a Valuation *contains* Price Bands)
 
-- **`metadata.ts`** — `PlatformMetadata`: display name, audience tagline, fee label + percentage, brand colour, app/web URLs. Pure data. Used by every UI surface.
-- **`listing-spec.ts`** — `PlatformListingSpec`: the platform's `promptFragment` (formatting rules dropped into LLM prompts), `fieldsSchema` (dropdown enumeration shipped to the model in `/api/format`), `relevantChips` (which Refinement Chips this platform respects), and a `validate(listing)` function returning required-field errors. Pure, edge-safe.
-- **`market.ts`** — `PlatformMarket.fetchPrices(query)`: returns active-listing price data (median / min / max / count) for the item. eBay uses SerpAPI's eBay engine; Vinted and Depop share a Google-`site:` fetcher in `src/platforms/shared/google-site-prices.ts`. Node-runtime.
-- **`publish.ts`** _(eBay only)_ — `PlatformPublish.publishListing(...)`: posts a listing via the platform's write API. Asymmetric capability — Vinted and Depop have no public write API today. Node-runtime, imported only by `/api/ebay/list`.
-- **`auth.ts`** _(eBay only)_ — OAuth flow, token encryption (AES-256-GCM with `EBAY_TOKEN_SECRET`), refresh logic, and per-user token retrieval from Supabase. Node-runtime.
+**Confidence**:
+How much the Comparables agree. Low Confidence is a real answer — it's what stops Scout from calling a coin-flip a bargain.
 
-### Registry
+**Recommendation**:
+The Enabled Platform an Item should be posted on, chosen by Price Band weighted by likelihood of selling. Only exists when more than one Platform is enabled; with one, there is nothing to choose between.
+_Avoid_: winner, best platform, suggestion
 
-`src/platforms/registry.ts` exports `platformMetadata`, `platformListingSpec`, `platformMarket` as `Record<Platform, …>`. Callers that iterate (e.g. `/api/market` fetching prices for all platforms) consume the registry; callers that need one platform reach for the slice directly.
+## Modes
 
-### Edge vs Node split
+**Sell Mode**:
+The user has an Item and wants to list it. Produces a Recommendation and a Platform-formatted Listing to copy. This is v1.
 
-- Edge routes (`/api/analyse`, `/api/format`, `/api/refine`) may only import `metadata` and `listing-spec` slices. These have no Node-only dependencies.
-- Node routes (`/api/market`, `/api/ebay/*`, `/api/auth/ebay/*`) may import any slice.
-- `publish.ts` and `auth.ts` (eBay) pull in `crypto`, Supabase, and category data — never import these from an edge route.
+**Scout Mode**:
+The user is standing in a shop and wants to know whether to buy an Item at its asking price. The same Valuation, minus the asking price, plus a verdict. Deferred to v2.
+_Avoid_: buy mode, reseller mode
 
-## Listing Pipeline _(forward-looking — Phase 3)_
+## Account
 
-The end-to-end flow `page.tsx` orchestrates: Photo selection → Neutral Listing (analyse) → fan-out (market intelligence + Platform-formatted Listing per platform) → refinement (chip toggles, field edits, photo boost). To be extracted as `useListingPipeline()` in Phase 3.
-
-## LLM Call Modules _(forward-looking — Phase 2)_
-
-Each Anthropic call as a single module that owns its prompt, SDK invocation, JSON extraction, and shape validation. Planned: `analyseListing`, `formatListing`, `refineListing`, `synthesiseMarketIntelligence`. The corresponding `/api/*` routes will become thin HTTP adapters around these modules.
+**Allowance**:
+How much valuing a user may do before they are asked to pay. Counted server-side against their account from the first release, whether or not anything is being charged yet.
+_Avoid_: quota, credits, limit
