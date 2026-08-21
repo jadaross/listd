@@ -235,17 +235,35 @@ fi
 pause
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
-stage "Supabase — create the project"
-say "Issue #5. Three tickets sit directly behind this one (#8 auth, #9 meter,"
-say "#10 enabled platforms) and two more behind those."
-open_url "https://supabase.com/dashboard/projects"
-step "Click 'New project'."
-step "Name it 'wattle'. Choose the London (eu-west-2) region — your users and"
-step "  your comparables are both UK."
-step "Generate a database password and save it in your password manager now."
-step "Free tier is fine."
-warn "Provisioning takes a couple of minutes. Wait for the project to go green."
-pause "Press Enter once the project is provisioned."
+stage "Supabase — free an active-project slot"
+say "Issue #5. Three tickets sit behind it (#8 auth, #9 meter, #10 enabled"
+say "platforms) and two more behind those."
+say ""
+say "The project already exists and has been renamed to \"wattle\" — it is the"
+say "old listd project, paused, with its data intact. It does NOT need creating."
+warn "But it cannot be resumed yet: the Free plan allows 2 active projects and"
+warn "catsnap + mallorca-moko already occupy both. Supabase refuses the resume."
+say ""
+say "granola-ai-proj is already paused, so pausing or deleting it frees nothing"
+say "— the cap counts ACTIVE projects only."
+say ""
+say "Your options:"
+step "Pause or delete catsnap or mallorca-moko, then resume wattle."
+step "Upgrade to Pro (~\$25/mo) to lift the cap. Do the payment yourself."
+step "Skip the cloud entirely for now and run Supabase locally — see below."
+say ""
+note "  Local is the cheapest unblock: 'brew install supabase/tap/supabase'"
+note "  then 'supabase start' runs Postgres, Auth and Studio in Docker, and"
+note "  the migrations in supabase/migrations run against it unchanged."
+note "  You only need the cloud project once a real device has to reach it."
+say ""
+if confirm "Have you freed a slot and resumed the wattle project?"; then
+  printf '  %s✓%s carry on to the keys.\n' "$GREEN" "$RESET"
+else
+  warn "Skipping the remaining Supabase stages — nothing to capture yet."
+  SKIPPED+=("Supabase: resume the wattle project, then re-run this wizard")
+fi
+pause
 
 # ── 3 ─────────────────────────────────────────────────────────────────────
 stage "Supabase — capture the keys"
