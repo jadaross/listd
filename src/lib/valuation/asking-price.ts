@@ -14,7 +14,7 @@ import type { ValuationProvider } from "./provider";
 const WEB_SEARCH: Anthropic.Messages.WebSearchTool20260209 = {
   type: "web_search_20260209",
   name: "web_search",
-  max_uses: 4,
+  max_uses: 2,
   user_location: { type: "approximate", country: "GB" },
 };
 
@@ -127,6 +127,19 @@ function textOf(content: Anthropic.Messages.ContentBlock[]): string {
 /** Server tools can hand back `pause_turn` mid-search; resume by echoing. */
 const MAX_RESUMES = 3;
 
+/**
+ * Sonnet 5 defaults to `effort: "high"` on the API, which on this task meant
+ * ~8 minutes per platform — unusable for someone standing in a shop. This is
+ * "search, read prices, average them", not a reasoning problem: low effort
+ * also makes the model consolidate its tool calls instead of trickling them.
+ */
+const REQUEST: Omit<Anthropic.Messages.MessageCreateParamsNonStreaming, "messages"> = {
+  model: MODELS.valuation,
+  max_tokens: 4000,
+  output_config: { effort: "low" },
+  tools: [WEB_SEARCH],
+};
+
 export const askingPriceProvider: ValuationProvider = {
   async band(item: ValuationItem, platform: Platform): Promise<PriceBand> {
     const client = anthropicClient();
@@ -134,21 +147,11 @@ export const askingPriceProvider: ValuationProvider = {
       { role: "user", content: buildValuationPrompt(item, platform) },
     ];
 
-    let response = await client.messages.create({
-      model: MODELS.valuation,
-      max_tokens: 8000,
-      tools: [WEB_SEARCH],
-      messages,
-    });
+    let response = await client.messages.create({ ...REQUEST, messages });
 
     for (let i = 0; response.stop_reason === "pause_turn" && i < MAX_RESUMES; i++) {
       messages.push({ role: "assistant", content: response.content });
-      response = await client.messages.create({
-        model: MODELS.valuation,
-        max_tokens: 8000,
-        tools: [WEB_SEARCH],
-        messages,
-      });
+      response = await client.messages.create({ ...REQUEST, messages });
     }
 
     if (response.stop_reason === "refusal") {

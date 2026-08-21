@@ -29,12 +29,29 @@ export function score(band: PriceBand): number {
 }
 
 /**
+ * A band with no Comparables behind it is a guess, however confident it
+ * sounds. It may still be reported to the user — a wide low-confidence range
+ * is a useful answer — but it must not win a Recommendation while some other
+ * platform has actual evidence. Observed live: a 0-comparable Depop band of
+ * £35–60 outranked a 5-comparable Vinted band of £15–35 and would have sent
+ * the user to the wrong place.
+ */
+function evidenced([, band]: [Platform, PriceBand]): boolean {
+  return band.comparables.length > 0;
+}
+
+/**
  * Returns null when there is nothing to choose between — a single Enabled
  * Platform means no comparison work runs at all, by design.
  */
 export function recommend(valuation: Valuation): Recommendation | null {
-  const entries = Object.entries(valuation.perPlatform) as Array<[Platform, PriceBand]>;
-  if (entries.length < 2) return null;
+  const all = Object.entries(valuation.perPlatform) as Array<[Platform, PriceBand]>;
+  if (all.length < 2) return null;
+
+  // Rank among platforms that found comparables; fall back to the rest only
+  // when nothing found any.
+  const withEvidence = all.filter(evidenced);
+  const entries = withEvidence.length > 0 ? withEvidence : all;
 
   const ranked = [...entries].sort(([aId, a], [bId, b]) => {
     const byScore = score(b) - score(a);
@@ -54,7 +71,9 @@ export function recommend(valuation: Valuation): Recommendation | null {
     net: Math.round(netPrice(listAt, winnerId)),
     currency: winner.currency,
     reasoning: explain(winnerId, winner, ranked.slice(1)),
-    runnersUp: ranked.slice(1).map(([id, band]) => ({
+    // Runners-up include the unevidenced bands, so the user can still see
+    // them — they just cannot win.
+    runnersUp: [...ranked.slice(1), ...all.filter((e) => !entries.includes(e))].map(([id, band]) => ({
       platform: id,
       listAt: midpoint(band),
       net: Math.round(netPrice(midpoint(band), id)),

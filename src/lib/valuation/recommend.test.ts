@@ -6,7 +6,8 @@ function band(
   low: number,
   high: number,
   sell_likelihood: Confidence = "medium",
-  confidence: Confidence = "medium"
+  confidence: Confidence = "medium",
+  comparableCount = 1
 ): PriceBand {
   return {
     low,
@@ -14,9 +15,19 @@ function band(
     currency: "GBP",
     confidence,
     sell_likelihood,
-    comparables: [{ title: "c", price: low, currency: "GBP", platform: "vinted" }],
+    comparables: Array.from({ length: comparableCount }, (_, i) => ({
+      title: `c${i}`,
+      price: low,
+      currency: "GBP",
+      platform: "vinted" as const,
+    })),
     reasoning: `Listed at £${low}–£${high}.`,
   };
+}
+
+/** A band the model produced without finding anything to back it up. */
+function unevidenced(low: number, high: number): PriceBand {
+  return band(low, high, "high", "low", 0);
 }
 
 function valuation(perPlatform: Partial<Record<Platform, PriceBand>>): Valuation {
@@ -94,6 +105,42 @@ describe("recommend — ranking", () => {
     const a = recommend(valuation({ vinted: band(50, 80), depop: band(50, 80) }));
     const b = recommend(valuation({ vinted: band(50, 80), depop: band(50, 80) }));
     expect(a!.platform).toBe(b!.platform);
+  });
+});
+
+describe("recommend — evidence", () => {
+  it("does not let a band with no comparables win", () => {
+    // Observed live: Depop returned £35-60 with zero comparables and beat a
+    // well-evidenced Vinted band. It must not.
+    const result = recommend(
+      valuation({ vinted: band(15, 35, "high", "medium", 5), depop: unevidenced(35, 60) })
+    );
+    expect(result!.platform).toBe("vinted");
+  });
+
+  it("still reports the unevidenced platform as a runner-up", () => {
+    const result = recommend(
+      valuation({ vinted: band(15, 35, "high", "medium", 5), depop: unevidenced(35, 60) })
+    );
+    expect(result!.runnersUp.map((r) => r.platform)).toContain("depop");
+  });
+
+  it("falls back to unevidenced bands when nothing found comparables", () => {
+    const result = recommend(
+      valuation({ vinted: unevidenced(10, 20), depop: unevidenced(30, 60) })
+    );
+    expect(result!.platform).toBe("depop");
+  });
+
+  it("prefers the higher band among evidenced platforms only", () => {
+    const result = recommend(
+      valuation({
+        vinted: band(10, 20, "medium", "medium", 3),
+        depop: band(40, 60, "medium", "medium", 3),
+        ebay: unevidenced(200, 300),
+      })
+    );
+    expect(result!.platform).toBe("depop");
   });
 });
 
