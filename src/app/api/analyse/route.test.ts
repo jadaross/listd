@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/auth", async () => (await import("@/test/auth-mock")).authMock());
 import { analysisResult } from "@/test/fixtures";
 import { readStringStream } from "@/lib/streaming-text";
 
 const analyseListingStream = vi.fn();
 vi.mock("@/lib/llm/analyse", () => ({ analyseListingStream }));
 
+const { authState, resetAuthState } = await import("@/test/auth-mock");
 const { POST } = await import("./route");
 
 const PHOTO = "data:image/jpeg;base64,AAAA";
@@ -27,6 +30,7 @@ function streamOf(text: string): ReadableStream<string> {
 }
 
 beforeEach(() => {
+  resetAuthState();
   analyseListingStream.mockReset();
   analyseListingStream.mockReturnValue(streamOf(JSON.stringify(analysisResult)));
 });
@@ -77,6 +81,22 @@ describe("POST /api/analyse", () => {
 
   it("does not call the model when validation fails", async () => {
     await POST(post({ images: [] }));
+    expect(analyseListingStream).not.toHaveBeenCalled();
+  });
+});
+
+// #8 — every route is behind a bearer token.
+describe("authentication", () => {
+  it("401s without a bearer token", async () => {
+    authState.userId = null;
+    const res = await POST(post({ images: [PHOTO], tone: "casual" }));
+    expect(res.status).toBe(401);
+    expect((await res.json()).code).toBe("missing_token");
+  });
+
+  it("does not call the model for an unauthenticated request", async () => {
+    authState.userId = null;
+    await POST(post({ images: [PHOTO], tone: "casual" }));
     expect(analyseListingStream).not.toHaveBeenCalled();
   });
 });

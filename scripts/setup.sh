@@ -184,11 +184,11 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=5
+TOTAL_STAGES=2
 ENV_FILE=".env.local"
 
-# This wizard reads supabase/migrations/... and writes .env.local by relative
-# path, so it must run from the repo root. Move there rather than complaining.
+# This wizard writes .env.local by relative path, so it must run from the repo
+# root. Move there rather than complaining.
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ ! -f "supabase/migrations/0001_identity_and_metering.sql" ]]; then
   printf 'Run this from the wattle repo — migration file not found.\n' >&2
@@ -199,16 +199,11 @@ banner "wattle — unblock the build"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
 stage "Anthropic — top up credits"
-say "The API is currently refusing every call:"
+say "If the API is refusing calls with:"
 note "  400 invalid_request_error — 'Your credit balance is too low'"
 say ""
-say "Nothing else in this wizard matters until this is fixed — analyse and"
-say "valuate are both dead in the water."
-open_url "https://platform.claude.com/"
-step "Sign in, then find 'Plans & Billing' in the left sidebar."
-step "Add credits (or enable auto-reload so this doesn't happen mid-demo)."
-pause "Press Enter once credits are showing on the account."
-
+say "then nothing else matters until it is fixed — analyse and valuate are"
+say "both dead in the water. This stage checks, and skips itself if all is well."
 say ""
 say "Checking the key in $ENV_FILE against the live API..."
 _KEY=$(grep -E '^ANTHROPIC_API_KEY=' "$ENV_FILE" 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"' || true)
@@ -224,8 +219,11 @@ else
   if grep -q '"type":"message"' <<<"$_RESP"; then
     printf '  %s✓%s credits are live — the API answered.\n' "$GREEN" "$RESET"
   elif grep -q 'credit balance is too low' <<<"$_RESP"; then
-    warn "still reporting a low balance. Give it a minute and re-run this wizard."
-    SKIPPED+=("Anthropic credits — balance still too low")
+    warn "balance is too low — top up, then re-run this wizard."
+    open_url "https://platform.claude.com/"
+    step "Sign in → 'Plans & Billing' → add credits (or enable auto-reload)."
+    pause "Press Enter once credits are showing on the account."
+    SKIPPED+=("Anthropic credits — verify after topping up")
   else
     warn "unexpected reply; check it yourself:"
     note "  ${_RESP:0:200}"
@@ -235,90 +233,17 @@ fi
 pause
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
-stage "Supabase — free an active-project slot"
-say "Issue #5. Three tickets sit behind it (#8 auth, #9 meter, #10 enabled"
-say "platforms) and two more behind those."
-say ""
-say "The project already exists and has been renamed to \"wattle\" — it is the"
-say "old listd project, paused, with its data intact. It does NOT need creating."
-warn "But it cannot be resumed yet: the Free plan allows 2 active projects and"
-warn "catsnap + mallorca-moko already occupy both. Supabase refuses the resume."
-say ""
-say "granola-ai-proj is already paused, so pausing or deleting it frees nothing"
-say "— the cap counts ACTIVE projects only."
-say ""
-say "Your options:"
-step "Pause or delete catsnap or mallorca-moko, then resume wattle."
-step "Upgrade to Pro (~\$25/mo) to lift the cap. Do the payment yourself."
-step "Skip the cloud entirely for now and run Supabase locally — see below."
-say ""
-note "  Local is the cheapest unblock: 'brew install supabase/tap/supabase'"
-note "  then 'supabase start' runs Postgres, Auth and Studio in Docker, and"
-note "  the migrations in supabase/migrations run against it unchanged."
-note "  You only need the cloud project once a real device has to reach it."
-say ""
-if confirm "Have you freed a slot and resumed the wattle project?"; then
-  printf '  %s✓%s carry on to the keys.\n' "$GREEN" "$RESET"
-else
-  warn "Skipping the remaining Supabase stages — nothing to capture yet."
-  SKIPPED+=("Supabase: resume the wattle project, then re-run this wizard")
-fi
-pause
-
-# ── 3 ─────────────────────────────────────────────────────────────────────
-stage "Supabase — capture the keys"
-say "Three values go into $ENV_FILE. The service role key is a secret that"
-say "bypasses RLS entirely — it must never reach the iOS client."
-open_url "https://supabase.com/dashboard/project/_/settings/api"
-step "Make sure the 'wattle' project is selected (top-left switcher)."
-step "Copy the Project URL."
-ask NEXT_PUBLIC_SUPABASE_URL "Paste the Project URL:"
-step "Under Project API keys, copy the 'anon' / 'public' key."
-ask NEXT_PUBLIC_SUPABASE_ANON_KEY "Paste the anon key:"
-step "Reveal and copy the 'service_role' key."
-ask_secret SUPABASE_SERVICE_ROLE_KEY "Paste the service_role key (hidden):"
-write_env NEXT_PUBLIC_SUPABASE_URL "$NEXT_PUBLIC_SUPABASE_URL"
-write_env NEXT_PUBLIC_SUPABASE_ANON_KEY "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
-write_env SUPABASE_SERVICE_ROLE_KEY "$SUPABASE_SERVICE_ROLE_KEY"
-note "$ENV_FILE is gitignored — these will not be committed."
-pause
-
-# ── 4 ─────────────────────────────────────────────────────────────────────
-stage "Supabase — run the schema migration"
-say "The migration is already written and committed:"
-note "  supabase/migrations/0001_identity_and_metering.sql"
-say ""
-say "It creates the profiles table (Enabled Platforms + the Allowance meter),"
-say "turns on RLS, and grants the client update rights on enabled_platforms"
-say "ONLY — so nobody can zero their own meter."
-if command -v pbcopy >/dev/null 2>&1; then
-  pbcopy < supabase/migrations/0001_identity_and_metering.sql
-  printf '  %s✓%s migration copied to your clipboard.\n' "$GREEN" "$RESET"
-else
-  note "  Open that file and copy its contents."
-fi
-open_url "https://supabase.com/dashboard/project/_/sql/new"
-step "Paste into the SQL editor and click Run."
-step "Expect 'Success. No rows returned'."
-pause "Press Enter once the migration has run."
-if confirm "Did it run without errors?"; then
-  printf '  %s✓%s schema is live.\n' "$GREEN" "$RESET"
-else
-  warn "Copy the error out and hand it to Claude — do not hand-patch the schema."
-  SKIPPED+=("Supabase migration 0001 — reported an error")
-fi
-pause
-
-# ── 5 ─────────────────────────────────────────────────────────────────────
 stage "Xcode — create the project"
-say "Issue #11. Four tickets sit behind this one (#12, #13, #14, #16)."
+say "Issue #11. Four tickets sit behind this one (#12, #13, #14, #16), and it"
+say "is now the ONLY thing standing between wattle and a running app — the"
+say "backend is done: auth, the meter and the Valuation are all live."
 say ""
 say "There is no .xcodeproj anywhere in this repo yet. The Swift files under"
 say "ios/ are a visual reference only — mock-driven, no networking (ADR-0001)."
 warn "Do NOT build on top of them. Build beside them and keep the theme."
 say ""
 open_url "https://developer.apple.com/xcode/"
-note "  (that link is only a fallback — Xcode 26.6 is already installed)"
+note "  (that link is only a fallback — Xcode is already installed)"
 step "Open Xcode → File → New → Project…"
 step "iOS → App → Next"
 step "Product Name: Wattle"
@@ -334,5 +259,5 @@ else
 fi
 
 finish
-printf '  %sNext:%s tell Claude the wizard is done. #8, #9, #10 unblock\n' "$BOLD" "$RESET"
-printf '  immediately, and #12 follows once the Xcode project is in.\n\n'
+printf '  %sNext:%s tell Claude the wizard is done. #12 unblocks immediately;\n' "$BOLD" "$RESET"
+printf '  #15 (Sign in with Apple) needs the Apple Developer portal.\n\n'

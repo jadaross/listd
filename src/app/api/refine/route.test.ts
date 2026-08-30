@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/auth", async () => (await import("@/test/auth-mock")).authMock());
 import { platformListing } from "@/test/fixtures";
 
 const refineListing = vi.fn();
 vi.mock("@/lib/llm/refine", () => ({ refineListing }));
 
+const { authState, resetAuthState } = await import("@/test/auth-mock");
 const { POST } = await import("./route");
 
 function post(body: unknown, raw?: string) {
@@ -21,6 +24,7 @@ const valid = {
 };
 
 beforeEach(() => {
+  resetAuthState();
   refineListing.mockReset();
   refineListing.mockResolvedValue(platformListing);
 });
@@ -53,5 +57,21 @@ describe("POST /api/refine", () => {
     const res = await POST(post(valid));
     expect(res.status).toBe(500);
     expect((await res.json()).error).toMatch(/model refused/);
+  });
+});
+
+// #8 — every route is behind a bearer token.
+describe("authentication", () => {
+  it("401s without a bearer token", async () => {
+    authState.userId = null;
+    const res = await POST(post(valid));
+    expect(res.status).toBe(401);
+    expect((await res.json()).code).toBe("missing_token");
+  });
+
+  it("does not call the model for an unauthenticated request", async () => {
+    authState.userId = null;
+    await POST(post(valid));
+    expect(refineListing).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/auth", async () => (await import("@/test/auth-mock")).authMock());
+
 const valuate = vi.fn();
 const recommend = vi.fn();
 vi.mock("@/lib/valuation", () => ({ valuate, recommend }));
 
+const getEnabledPlatforms = vi.fn();
+vi.mock("@/lib/profile", () => ({ getEnabledPlatforms }));
+
+const spendAllowance = vi.fn();
+const refundAllowance = vi.fn();
+vi.mock("@/lib/allowance", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/allowance")>()),
+  spendAllowance,
+  refundAllowance,
+}));
+
+const { authState, resetAuthState } = await import("@/test/auth-mock");
 const { POST } = await import("./route");
 
 const item = {
@@ -28,6 +42,8 @@ const valuation = {
   query: "Carhartt Detroit jacket size M",
 };
 
+const allowance = { allowed: true, used: 3, limit: 20, resetsAt: "2026-09-01T00:00:00+00:00" };
+
 function post(body: unknown, raw?: string) {
   return new Request("http://localhost/api/valuate", {
     method: "POST",
@@ -37,34 +53,42 @@ function post(body: unknown, raw?: string) {
 }
 
 beforeEach(() => {
+  resetAuthState();
   valuate.mockReset();
   recommend.mockReset();
+  getEnabledPlatforms.mockReset();
+  spendAllowance.mockReset();
+  refundAllowance.mockReset();
   valuate.mockResolvedValue(valuation);
   recommend.mockReturnValue(null);
+  getEnabledPlatforms.mockResolvedValue(["vinted"]);
+  spendAllowance.mockResolvedValue(allowance);
+  refundAllowance.mockResolvedValue(undefined);
 });
 
 describe("POST /api/valuate", () => {
   it("returns the valuation", async () => {
-    const res = await POST(post({ item, platforms: ["vinted"] }));
+    const res = await POST(post({ item }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ...valuation, recommendation: null });
+    expect(await res.json()).toMatchObject({ ...valuation, recommendation: null });
   });
 
   it("returns a null recommendation for a single platform", async () => {
-    const res = await POST(post({ item, platforms: ["vinted"] }));
-    expect((await res.json()).recommendation).toBeNull();
+    expect((await (await POST(post({ item }))).json()).recommendation).toBeNull();
   });
 
   it("includes the recommendation when there is one", async () => {
     const rec = { platform: "depop", listAt: 70, net: 63, currency: "GBP", reasoning: "x", runnersUp: [] };
     recommend.mockReturnValue(rec);
-    const res = await POST(post({ item, platforms: ["vinted", "depop"] }));
-    expect((await res.json()).recommendation).toEqual(rec);
+    getEnabledPlatforms.mockResolvedValue(["vinted", "depop"]);
+    expect((await (await POST(post({ item }))).json()).recommendation).toEqual(rec);
   });
 
-  it("passes the enabled platforms through", async () => {
-    await POST(post({ item, platforms: ["vinted", "depop"] }));
-    expect(valuate).toHaveBeenCalledWith(item, ["vinted", "depop"]);
+  it("401s without authentication", async () => {
+    authState.userId = null;
+    const res = await POST(post({ item }));
+    expect(res.status).toBe(401);
+    expect(valuate).not.toHaveBeenCalled();
   });
 
   it("400s on unparsable JSON", async () => {
@@ -72,35 +96,121 @@ describe("POST /api/valuate", () => {
   });
 
   it("400s when the item is missing", async () => {
-    expect((await POST(post({ platforms: ["vinted"] }))).status).toBe(400);
+    expect((await POST(post({}))).status).toBe(400);
   });
 
   it("400s when the item lacks a size", async () => {
     const { size: _omitted, ...partial } = item;
-    expect((await POST(post({ item: partial, platforms: ["vinted"] }))).status).toBe(400);
-  });
-
-  it("400s on an empty platform list", async () => {
-    const res = await POST(post({ item, platforms: [] }));
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(/At least one platform/);
-  });
-
-  it("400s on an unknown platform", async () => {
-    const res = await POST(post({ item, platforms: ["grailed"] }));
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(/Unknown platform/);
-  });
-
-  it("does not value when validation fails", async () => {
-    await POST(post({ item, platforms: [] }));
-    expect(valuate).not.toHaveBeenCalled();
+    expect((await POST(post({ item: partial }))).status).toBe(400);
   });
 
   it("500s when valuation throws", async () => {
     valuate.mockRejectedValue(new Error("search is down"));
-    const res = await POST(post({ item, platforms: ["vinted"] }));
+    const res = await POST(post({ item }));
     expect(res.status).toBe(500);
     expect((await res.json()).error).toMatch(/search is down/);
+  });
+});
+
+// #10 — the platform set is the user's, not the request's.
+describe("enabled platforms", () => {
+  it("values the caller's Enabled Platforms", async () => {
+    getEnabledPlatforms.mockResolvedValue(["vinted", "depop"]);
+    await POST(post({ item }));
+    expect(valuate).toHaveBeenCalledWith(item, ["vinted", "depop"]);
+  });
+
+  it("reads them for the authenticated caller", async () => {
+    await POST(post({ item }));
+    expect(getEnabledPlatforms).toHaveBeenCalledWith("test-access-token");
+  });
+
+  it("ignores a platform list supplied by the client", async () => {
+    getEnabledPlatforms.mockResolvedValue(["vinted"]);
+    await POST(post({ item, platforms: ["vinted", "depop", "ebay"] }));
+    expect(valuate).toHaveBeenCalledWith(item, ["vinted"]);
+  });
+
+  it("400s when the user has no platforms enabled", async () => {
+    getEnabledPlatforms.mockResolvedValue([]);
+    const res = await POST(post({ item }));
+    expect(res.status).toBe(400);
+    expect(valuate).not.toHaveBeenCalled();
+  });
+
+  it("500s when the profile cannot be read", async () => {
+    getEnabledPlatforms.mockRejectedValue(new Error("profile unreachable"));
+    expect((await POST(post({ item }))).status).toBe(500);
+  });
+});
+
+// #9 — the meter.
+describe("the Allowance meter", () => {
+  it("spends a unit for the authenticated caller", async () => {
+    await POST(post({ item }));
+    expect(spendAllowance).toHaveBeenCalledWith("test-user-id");
+  });
+
+  it("reports the remaining Allowance alongside the valuation", async () => {
+    const body = await (await POST(post({ item }))).json();
+    expect(body.allowance).toEqual({ used: 3, limit: 20, resets_at: "2026-09-01T00:00:00+00:00" });
+  });
+
+  it("402s with the reset time when the Allowance is exhausted", async () => {
+    spendAllowance.mockResolvedValue({ ...allowance, allowed: false, used: 20 });
+    const res = await POST(post({ item }));
+    expect(res.status).toBe(402);
+    expect(await res.json()).toMatchObject({
+      code: "allowance_exhausted",
+      allowance: { used: 20, limit: 20, resets_at: "2026-09-01T00:00:00+00:00" },
+    });
+  });
+
+  it("does not value anything once the Allowance is exhausted", async () => {
+    spendAllowance.mockResolvedValue({ ...allowance, allowed: false });
+    await POST(post({ item }));
+    expect(valuate).not.toHaveBeenCalled();
+  });
+
+  it("spends before valuing, so concurrent callers cannot share a unit", async () => {
+    const order: string[] = [];
+    spendAllowance.mockImplementation(async () => {
+      order.push("spend");
+      return allowance;
+    });
+    valuate.mockImplementation(async () => {
+      order.push("valuate");
+      return valuation;
+    });
+    await POST(post({ item }));
+    expect(order).toEqual(["spend", "valuate"]);
+  });
+
+  it("refunds the unit when the valuation fails", async () => {
+    valuate.mockRejectedValue(new Error("search is down"));
+    await POST(post({ item }));
+    expect(refundAllowance).toHaveBeenCalledWith("test-user-id");
+  });
+
+  it("does not refund when the valuation succeeds", async () => {
+    await POST(post({ item }));
+    expect(refundAllowance).not.toHaveBeenCalled();
+  });
+
+  it("does not spend when validation fails", async () => {
+    await POST(post({}));
+    expect(spendAllowance).not.toHaveBeenCalled();
+  });
+
+  it("does not spend for an unauthenticated caller", async () => {
+    authState.userId = null;
+    await POST(post({ item }));
+    expect(spendAllowance).not.toHaveBeenCalled();
+  });
+
+  it("500s rather than 402s when the meter itself is broken", async () => {
+    spendAllowance.mockRejectedValue(new Error("No profile for user test-user-id"));
+    const res = await POST(post({ item }));
+    expect(res.status).toBe(500);
   });
 });

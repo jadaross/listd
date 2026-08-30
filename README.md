@@ -1,77 +1,79 @@
-# Wattle
+# wattle
 
-AI-powered listing generator for Vinted, Depop, and eBay. Upload photos of your clothes, get a photo critique, tag reading, market-priced listing, and a recommendation on which platform will sell it fastest — all in seconds.
+wattle values a secondhand item from photographs and tells you what to write,
+where to post it, and what to ask for it.
+
+It is **an iOS app with a headless backend**. There is no web UI — the Next.js
+app exists purely for its API routes and its deployment story on Vercel. See
+[ADR-0002](./docs/adr/0002-headless-nextjs-api-on-vercel.md).
+
+`CONTEXT.md` holds the domain vocabulary; `docs/adr/` holds the decisions.
 
 ## What it does
 
-1. Upload photos of a clothing item (or multiple items in bulk mode)
-2. AI scores each photo and flags missing shots (back view, care label, etc.)
-3. AI reads visible tags — brand, size, fabric, RN number
-4. A complete listing is generated: title, description, price range, attributes, and hashtags
-5. Live market data is pulled from eBay, Vinted, and Depop to recommend the best platform and price
-6. Copy and paste — or post directly to eBay if connected
+1. You photograph an item.
+2. Each photo is scored, missing shots are flagged, and any visible tag is read
+   — brand, size, fabric, care instructions.
+3. A **Neutral Listing** is written: the platform-agnostic description
+   everything else is generated from.
+4. Each **Enabled Platform** is valued against currently-listed comparables,
+   producing a **Price Band** and a confidence in it.
+5. The platform most likely to sell it for the most is **recommended**, and the
+   listing is rewritten in that platform's voice, ready to copy.
 
-## Features
-
-- **Single & bulk mode** — list one item or detect and list multiple items from a mixed photo set
-- **Photo coaching** — per-photo quality scores and specific suggestions before you waste time listing
-- **Tag recognition** — reads brand, size, fabric, care instructions, and RN numbers from label photos
-- **Three-platform output** — Vinted, Depop, and eBay, each with its own title format, hashtag conventions, and tone
-- **Market intelligence** — fetches live comp prices across platforms via SerpAPI and recommends where to list and at what price
-- **Direct eBay posting** — connect your eBay account via OAuth and publish drafts straight from the app
-- **Currency selector** — GBP, USD, EUR
-- **Tone selector** — Casual (Gen-Z Depop feel) or Professional (clean Vinted/eBay style)
-- **Streaming responses** — listing fields render progressively as the model generates them
-- **One-click copy** — every field has a copy button
+wattle writes for Vinted, Depop and eBay. It does not post to them —
+[ADR-0003](./docs/adr/0003-ebay-oauth-and-publishing-removed.md) removed
+publishing, and asking prices come from live comparables rather than sold data
+([ADR-0005](./docs/adr/0005-asking-price-valuation.md)).
 
 ## Running locally
 
 ```bash
 npm install
-cp .env.example .env.local
-# Fill in the keys (see below)
+cp .env.example .env.local   # or: vercel env pull .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-### Required environment variables
+There is nothing to open in a browser. See [`SETUP.md`](./SETUP.md) for the
+environment, the Supabase schema, and how to call a route by hand.
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Claude API — listing generation, grouping, formatting |
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Supabase — stores eBay OAuth tokens |
-| `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` / `EBAY_RU_NAME` / `EBAY_TOKEN_SECRET` / `EBAY_ENVIRONMENT` | eBay OAuth + direct posting |
-| `SERPAPI_KEY` | Live price comps from eBay (free tier: 100 searches/month) |
-| `NEXT_PUBLIC_APP_URL` | Used to build OAuth callback redirects |
+| `ANTHROPIC_API_KEY` | Every model call — analysis, valuation, formatting |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Identity: verifying the caller's bearer token |
+| `SUPABASE_SERVICE_ROLE_KEY` | The Allowance meter. Server-side only — never ship it to the app |
 
-Market intelligence and direct eBay posting are optional — without `SERPAPI_KEY` the market panel returns empty data, and without the eBay vars the connect button is disabled. The core listing flow only needs `ANTHROPIC_API_KEY`.
+## API
+
+Every route requires a Supabase bearer token. There are no anonymous requests:
+usage is metered from the first release, and the meter needs someone to meter
+([ADR-0007](./docs/adr/0007-metered-from-day-one.md)).
+
+| Route | Purpose |
+|---|---|
+| `POST /api/analyse` | Photos → photo scores, tag data, and a Neutral Listing. Streams. |
+| `POST /api/valuate` | An item → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. |
+| `POST /api/format` | Neutral Listing + platform + tone → a Platform-formatted Listing |
+| `POST /api/refine` | A Platform-formatted Listing + Refinement Chips → a rewritten one |
+| `GET` / `PATCH /api/profile` | The caller's Enabled Platforms and Allowance |
 
 ## Tech stack
 
-- **Next.js 16** (App Router, Turbopack) — frontend and API routes
-- **Anthropic Claude API** — `claude-sonnet-4-6` for listing generation and per-platform formatting, `claude-haiku-4-5` for bulk photo grouping and platform recommendation
-- **Supabase** — auth + encrypted storage for eBay OAuth tokens
-- **SerpAPI** — eBay price scraping for market comps
-- **eBay Developer API** — OAuth + Sell API for direct draft creation
-- **Tailwind CSS 4**
+- **Next.js 16** (App Router, Turbopack) — API routes only, Node runtime
+- **Anthropic Claude API** — Sonnet 5 for analysis and valuation, Haiku 4.5 for
+  formatting and refinement
+- **Supabase** — identity, Enabled Platforms, and the Allowance meter
 - **Vercel** — deployment
+- **Vitest** — `npm test`
 
-## Architecture
+## Where it is
 
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full request flow and state machine. In brief:
+The backend is done. Identity, metering and the Valuation are live and covered
+by tests.
 
-- `POST /api/analyse` — streams photo analysis + tag extraction + listing JSON
-- `POST /api/group` — groups photos by item for bulk mode
-- `POST /api/format` — reformats a listing for a specific platform + tone
-- `POST /api/market` — fetches comp prices and AI-generated platform recommendation
-- `POST /api/ebay/list` — creates an eBay draft from a generated listing
-- `/api/auth/ebay/*` — OAuth connect / callback / status / disconnect
+What remains is the client: there is no Xcode project in the repo yet. The
+SwiftUI files under `ios/` are a **visual reference only** — mock-driven, no
+networking ([ADR-0001](./docs/adr/0001-ios-only-web-ui-removed.md)). The real
+app gets built beside them.
 
-## Roadmap
-
-- **Saved history** — user accounts with listing history (Supabase scaffolding is already in place)
-- **Vinted direct posting** — pending Vinted Pro API access
-- **Depop direct posting** — pending Depop OAuth
-- **Crosslisting** — one upload publishes to all connected platforms in parallel
-- **iPhone app** — PWA first, then Expo/React Native for native barcode scanning
+Scout Mode — *"I'm in a shop, is this worth buying?"* — is deliberately v2.

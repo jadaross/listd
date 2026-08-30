@@ -1,3 +1,4 @@
+import { withAuth } from "@/lib/auth";
 import { analyseListingStream } from "@/lib/llm/analyse";
 import { toStringStreamResponse } from "@/lib/streaming-text";
 import type { Platform, Tone } from "@/lib/types";
@@ -10,7 +11,7 @@ interface RequestBody {
   tone: Tone;
 }
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json({ error: "ANTHROPIC_API_KEY is not configured" }, { status: 500 });
   }
@@ -31,4 +32,4 @@ export async function POST(request: Request) {
   }
 
   return toStringStreamResponse(analyseListingStream({ photos: images, tone, platform }));
-}
+});

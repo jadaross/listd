@@ -26,19 +26,28 @@ No test suite exists yet. Type-checking is done via `npm run build`.
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and set `ANTHROPIC_API_KEY`.
+Copy `.env.example` to `.env.local` and set `ANTHROPIC_API_KEY` plus the three
+Supabase values (or run `vercel env pull .env.local`). See `SETUP.md`.
 
 ## Architecture
 
 ### API routes
 
-All routes call the Anthropic SDK (`@anthropic-ai/sdk`).
+Every route runs on the Node runtime and requires a Supabase bearer token —
+there are no anonymous requests, because the meter needs someone to meter
+(ADR-0007). Wrap handlers in `withAuth` from `src/lib/auth.ts`.
 
-| Route | Runtime | Purpose |
-|---|---|---|
-| `POST /api/analyse` | edge | Photos → `AnalysisResult` (photo quality scoring + tag OCR + Neutral Listing). Streams SSE. |
-| `POST /api/format`  | edge | Neutral `Listing` + platform + tone → `PlatformListing`. |
-| `POST /api/refine`  | edge | Existing `PlatformListing` + chip instructions → rewritten `PlatformListing`. |
+| Route | Purpose |
+|---|---|
+| `POST /api/analyse` | Photos → `AnalysisResult` (photo quality scoring + tag OCR + Neutral Listing). Streams SSE. |
+| `POST /api/format`  | Neutral `Listing` + platform + tone → `PlatformListing`. |
+| `POST /api/refine`  | Existing `PlatformListing` + chip instructions → rewritten `PlatformListing`. |
+| `POST /api/valuate` | `ValuationItem` → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. |
+| `GET`/`PATCH /api/profile` | The caller's Enabled Platforms and Allowance. |
+
+`/api/valuate` reads the Enabled Platforms from the caller's profile — never
+from the request body. A client that could name its own platforms could ask for
+work it had not enabled.
 
 ### Key files
 
@@ -48,15 +57,24 @@ All routes call the Anthropic SDK (`@anthropic-ai/sdk`).
 | `src/lib/llm/*` | One module per Anthropic call — owns its prompt, SDK invocation, and parsing |
 | `src/lib/chip-vocab.ts` | Refinement Chip vocabulary, shared with iOS (`ios/Wattle/Models.swift`) |
 | `src/platforms/*` | Per-platform knowledge: `metadata.ts` (name, fees, colour) and `listing-spec.ts` (prompt fragment, field schema, validation) |
+| `src/lib/auth.ts` | Bearer-token verification and the `withAuth` route wrapper |
+| `src/lib/supabase.ts` | The three Supabase clients — anon, per-user (RLS applies), service role (RLS bypassed) |
+| `src/lib/allowance.ts` | The Allowance meter. Counting itself lives in SQL, not here |
+| `src/lib/profile.ts` | Enabled Platforms, read and written as the caller |
+| `supabase/migrations/*` | The schema, and the source of truth for it — never edit in the dashboard |
 | `ios/` | SwiftUI files — a **visual reference only**. Entirely mock-driven, no networking. See ADR-0001. |
 
 ### Not built yet
 
-The next things to build, in rough order:
+The backend is complete for v1: identity, metering and the Valuation all exist
+and are covered by tests. What remains is the client.
 
-1. **Auth + the usage meter** — Supabase, Sign in with Apple + email (ADR-0006, ADR-0007)
-2. **The Valuation service** — asking-price bands per enabled platform (ADR-0004, ADR-0005)
-3. **The iOS app itself** — a real client, written next to `ios/` rather than on top of it
+1. **The Xcode project** — there is no `.xcodeproj` in the repo at all (#11)
+2. **Sign in with Apple** — needs Apple Developer portal configuration (#15)
+3. **The screens** — photograph an Item, valuation, format and copy (#12, #13, #14, #16)
+
+Build the real app *beside* `ios/`, not on top of it: those files are mock-driven
+with a single-god-object state model that will not survive real async work.
 
 ### Prompt design
 

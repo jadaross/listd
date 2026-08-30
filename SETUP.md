@@ -1,143 +1,88 @@
-# Wattle — Manual Setup Steps
+# Wattle — setup
 
-## What's already done
-- `ANTHROPIC_API_KEY` — analysis + market intelligence
-- `SERPAPI_KEY` — Vinted & Depop live pricing
+## Environment
 
----
+Copy `.env.example` to `.env.local` and fill in three things:
 
-## 1. Supabase (required for eBay OAuth)
+| Variable | Where it comes from |
+|---|---|
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page, the `anon` / publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | same page, `service_role` — **server only** |
 
-The eBay connect flow uses Supabase for anonymous sessions and storing encrypted tokens. Without it, "Connect eBay account" will error.
+The service role key bypasses row-level security entirely. It exists so the
+Allowance meter can move a counter the user is deliberately forbidden from
+writing. It must never reach the iOS client.
 
-### Create a project
-1. Go to [supabase.com](https://supabase.com) → New project
-2. Copy the following into `.env.local`:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-   SUPABASE_SERVICE_ROLE_KEY=eyJ...
-   ```
-   All three are under **Project Settings → API**.
+`vercel env pull .env.local` fetches all four from the linked Vercel project.
 
-### Create the database table
-Run this in the **Supabase SQL Editor** (Project → SQL Editor → New query):
+## Supabase
 
-```sql
-create table platform_connections (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  platform text not null,
-  access_token_enc text not null,
-  refresh_token_enc text not null,
-  expires_at timestamptz not null,
-  platform_username text,
-  updated_at timestamptz default now(),
-  unique (user_id, platform)
-);
+The project is `wattle` (`vnpjoujblpjygpyvwltg`, eu-north-1). It is on the free
+plan, which allows **two active projects per organisation** — if a resume is
+ever refused, that cap is why, and pausing another project frees a slot.
 
--- Allow the service role full access (used server-side)
-alter table platform_connections enable row level security;
+> A project with no traffic for 7 days is paused automatically. A paused project's
+> hostname stops resolving, so the symptom is connection failures rather than a
+> tidy error. Resume it from the dashboard; restores take a few minutes.
 
-create policy "service role bypass" on platform_connections
-  using (true)
-  with check (true);
-```
+### Schema
 
-### Enable anonymous sign-in
-In the Supabase dashboard: **Authentication → Providers → Anonymous** → toggle on.
+The schema lives in `supabase/migrations/` and is the source of truth. Applied
+in order:
 
----
+| Migration | What it does |
+|---|---|
+| `0001_identity_and_metering.sql` | `profiles` — Enabled Platforms + the Allowance meter, RLS, column grants, and the trigger that gives every new auth identity a profile |
+| `0002_drop_ebay_platform_connections.sql` | Drops the dead eBay token store (ADR-0003) |
+| `0003_allowance_spend_and_refund.sql` | `spend_allowance` / `refund_allowance` — moving the meter atomically |
 
-## 2. eBay Developer Portal
-
-You've been approved. Now wire up the credentials.
-
-### Get your keys
-1. Go to [developer.ebay.com](https://developer.ebay.com) → **My Account → Application Keys**
-2. You'll see **Sandbox** and **Production** key sets — use **Sandbox** for local dev first
-3. Copy into `.env.local`:
-   ```
-   EBAY_CLIENT_ID=your-sandbox-app-id
-   EBAY_CLIENT_SECRET=your-sandbox-cert-id
-   EBAY_ENVIRONMENT=sandbox
-   ```
-
-### Create a RuName (OAuth redirect alias)
-eBay requires a named redirect URI — you can't just pass a raw URL.
-
-1. In the developer portal: **My Account → User Tokens → Get a Token from eBay via Your Application**
-2. Click **Add eBay Redirect URL**
-3. Set the redirect URL to:
-   ```
-   http://localhost:3001/api/auth/ebay/callback
-   ```
-4. Give it any name, e.g. `wattle-local`
-5. Copy the **RuName** value (looks like `Firstname_Lastname-wattle-l-abcdef`) into `.env.local`:
-   ```
-   EBAY_RU_NAME=Firstname_Lastname-wattle-l-abcdef
-   ```
-
-### Generate the token encryption secret
-This is a random 32-byte key used to AES-encrypt stored tokens. Generate it once:
+Apply them with the CLI (installed as a dev dependency):
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+npx supabase link --project-ref vnpjoujblpjygpyvwltg
+npx supabase db push
 ```
 
-Copy the output into `.env.local`:
-```
-EBAY_TOKEN_SECRET=the64hexcharshere
-```
+Never edit the schema in the dashboard. A change that only exists there is
+invisible to the next person and to every other environment.
 
----
+### What the schema guarantees
 
-## 3. App URL
+These are enforced by the database, not by the API — the API cannot be the only
+thing standing between a user and their own meter:
 
-```
-NEXT_PUBLIC_APP_URL=http://localhost:3001
-```
+- A user can read **only their own** profile row (RLS).
+- A user can write **only** `enabled_platforms` (column grants). Attempting to
+  write `allowance_used` or `allowance_limit` fails with `permission denied`.
+- The Allowance functions are executable by `service_role` alone; a signed-in
+  user calling `/rpc/spend_allowance` gets `permission denied`.
+- At least one platform must stay enabled (`enabled_platforms_not_empty`).
+- Deleting an auth identity cascades to its profile.
 
-This is used to build the OAuth callback redirect. Update to your production URL when deploying.
+### Auth providers
 
----
+Sign in with Apple and email are configured under **Authentication → Providers**.
+Apple additionally needs a Service ID and key from the Apple Developer portal —
+that is issue #15, and it is a human step.
 
-## Final `.env.local` checklist
+## Running it
 
-```
-ANTHROPIC_API_KEY=✅ done
-SERPAPI_KEY=✅ done
-
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-EBAY_CLIENT_ID=
-EBAY_CLIENT_SECRET=
-EBAY_RU_NAME=
-EBAY_TOKEN_SECRET=
-EBAY_ENVIRONMENT=sandbox
-
-NEXT_PUBLIC_APP_URL=http://localhost:3001
+```bash
+npm run dev     # dev server on :3000
+npm run build   # production build + type-check
+npm run lint
+npm test
 ```
 
----
+Every route requires a bearer token. To exercise one by hand, sign a test user
+in against Supabase Auth and pass the `access_token`:
 
-## Testing the eBay flow
+```bash
+TOKEN=$(curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"..."}' | jq -r .access_token)
 
-Once all vars are set:
-1. Restart the dev server (`npm run dev`)
-2. Click **"Connect eBay account"** in the app header
-3. You'll be redirected to eBay's sandbox login — use your **sandbox test buyer account** (create one at developer.ebay.com → Sandbox → User Tokens → Create a test account)
-4. After authorising, you'll be redirected back and see "eBay connected" toast
-
----
-
-## Production (later)
-
-When moving to production:
-- Switch to **Production** eBay app keys
-- Create a new RuName pointing to your production domain
-- Change `EBAY_ENVIRONMENT=production`
-- Update `NEXT_PUBLIC_APP_URL` to your Vercel/production URL
-- The eBay Sell Inventory API is only available on production — sandbox will create draft listings but won't publish
+curl http://localhost:3000/api/profile -H "Authorization: Bearer $TOKEN"
+```

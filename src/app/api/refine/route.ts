@@ -1,3 +1,4 @@
+import { withAuth } from "@/lib/auth";
 import { refineListing } from "@/lib/llm/refine";
 import type { Platform, PlatformListing } from "@/lib/types";
 
@@ -9,7 +10,7 @@ interface RequestBody {
   instructions: string[];
 }
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json({ error: "ANTHROPIC_API_KEY is not configured" }, { status: 500 });
   }
@@ -36,4 +37,4 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return Response.json({ error: `Refine request failed: ${message}` }, { status: 500 });
   }
-}
+});
