@@ -91,3 +91,39 @@ Format **only the platform being shown** — never fan out across all three. See
 Warm direction, carried over to iOS: `--bg #f6f2eb`, `--card #fff`, `--text #1c1a16`,
 `--muted #86807a`, `--subtle #efebe3`, `--accent #3b5cff`. Fonts: **Instrument Serif**
 for the `bower.` wordmark and expressive headlines, **Geist** for everything else.
+
+## Wayfinding operations
+
+The tracker is **GitHub Issues on `jadaross/bower`**. Both native sub-issues and
+native issue dependencies are enabled, so the frontier renders in GitHub's own UI.
+
+| Concept | How it is expressed |
+|---|---|
+| The map | One issue labelled `wayfinder:map` |
+| A ticket | A **sub-issue** of the map, labelled `wayfinder:grilling` / `:prototype` / `:research` / `:task` |
+| Claiming | Assign to `jadaross` — an open, unassigned ticket is unclaimed |
+| Blocking | Native issue dependencies, not body text |
+| The frontier | Open sub-issues of the map that are unassigned and have no open blocker |
+
+Both dependency APIs take a **numeric issue id, not the issue number** — the
+single easiest thing to get wrong here.
+
+```bash
+# id for a given issue number
+gh api repos/jadaross/bower/issues/<number> --jq .id
+
+# attach a ticket to the map
+gh api -X POST repos/jadaross/bower/issues/<map>/sub_issues -f sub_issue_id=<id>
+
+# B is blocked by A
+gh api -X POST repos/jadaross/bower/issues/<B>/dependencies/blocked_by -f issue_id=<id-of-A>
+
+# the frontier
+gh issue list --label wayfinder:grilling --label wayfinder:research \
+              --label wayfinder:prototype --label wayfinder:task \
+              --state open --search "no:assignee"
+```
+
+Implementation issues (`ready-for-agent`, `ready-for-human`) are a **separate
+population** from decision tickets. A wayfinder ticket asks a question; an
+implementation issue builds a thing. Do not mix the labels on one issue.
