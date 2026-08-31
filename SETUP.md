@@ -2,7 +2,7 @@
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and fill in three things:
+Copy `.env.example` to `.env.local` and fill in four things:
 
 | Variable | Where it comes from |
 |---|---|

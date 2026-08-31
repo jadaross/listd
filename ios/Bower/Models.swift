@@ -204,7 +204,7 @@ enum MockData {
     ]
 }
 
-// MARK: - Caption refinement (ports rewriteCaption from listd-screens.jsx)
+// MARK: - Caption refinement (mock — the real thing is POST /api/refine)
 
 enum CaptionRewriter {
     static func apply(platform: PlatformID, base: Caption, chips: Set<FeedbackChip>) -> Caption {

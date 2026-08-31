@@ -1,6 +1,18 @@
-# Bower — App Planning Document
+# Bower — original planning document
 
-> AI-powered listing generator for Vinted & Depop. Upload photos of your clothes, get a photo critique, tag lookup, and a ready-to-post listing in seconds.
+> **Status: historical, retained for the research.** This is the document the
+> project was started from. Its *research* is still good and still cited — the
+> Vinted/Depop API assessment, the photo quality system, the tag pipeline, the
+> competitive landscape. Its *plan* has been superseded by the ADRs in
+> `docs/adr/`, and where the two disagree, **the ADRs win**.
+>
+> Superseded in three big ways: it plans a **web app** (ADR-0001 made the native
+> iOS app the product and deleted the web UI), it plans **direct posting** to
+> Vinted and Depop (ADR-0003 removed publishing entirely), and it plans
+> **no accounts** (ADR-0007 metered from day one, so every route is
+> authenticated). Sections below are annotated where they are no longer true.
+>
+> For what is actually next, read the GitHub issues, not this file.
 
 ---
 
@@ -17,9 +29,14 @@ Most people skip half of it or write lazy listings that don't sell. Bower does a
 
 ---
 
-## MVP Scope (Web App)
+## MVP Scope (web app — superseded by ADR-0001)
 
-The MVP is a web app. Modern mobile browsers support camera access so users can photograph items directly from their phone without a native app.
+> The MVP was going to be a web app on the theory that mobile browser camera
+> access was enough. It wasn't: the product's strongest moment is photographing
+> an item in a shop and getting a price before you walk away, and that is a
+> native moment. The web UI was deleted. **The user flow below survived the
+> pivot almost unchanged** — it is still what the app does, just in SwiftUI
+> against the API routes rather than in a browser.
 
 ### Core User Flow
 
@@ -61,15 +78,15 @@ The MVP is a web app. Modern mobile browsers support camera access so users can 
 | Product lookup from tag data | Searches for original product details using tag info |
 | AI listing generation | Title, description, price range, all attributes, hashtags |
 | Tone toggle | Casual (fun, gen-z Depop feel) vs. Professional (clean, Vinted-style) |
-| Platform selector | Vinted or Depop — tailors output format and field structure |
+| Platform selector | Vinted or Depop — tailors output format and field structure *(eBay was added as a third platform; the user's Enabled Platforms now drive this)* |
 | Regenerate button | Re-run the AI for a different take |
 | Copy to clipboard | One-click copy per field |
-| No account required (v1) | Keep friction as low as possible for early users |
+| ~~No account required (v1)~~ | **Reversed by ADR-0007.** Every route requires a Supabase bearer token, because the Allowance meter needs someone to meter |
 
 ### What MVP Does NOT Include
 
 - Automatically posting to Vinted/Depop (see API section — not yet possible at this scale)
-- Account system / saved listings history (v2)
+- ~~Account system~~ *(shipped early — see ADR-0007)* / saved listings history (still to come)
 - Bulk listing of multiple items (v2)
 - Live sold-price data from Vinted/Depop (v2)
 
@@ -136,6 +153,13 @@ The same call (or a second call once the user confirms they're done with photos)
 ---
 
 ## Tag Recognition & Product Lookup Pipeline
+
+> **Half shipped.** Reading the tag *did* ship — it is one of the three things
+> the single `analyse` call returns, as `tag_data`. The **lookup waterfall
+> below did not**: there is no SerpApi, no Google Lens call, no barcode
+> decode and no RN-number lookup in the codebase. Comparables are found by the
+> valuation's own web search instead (ADR-0005). Kept because it is still the
+> best sketch of what a product-lookup feature would need to do.
 
 ### What the AI Reads from Tag Photos
 
@@ -356,6 +380,9 @@ At 1,000 listings/month: ~£4–10 on Claude Sonnet. Worth it for the quality di
 
 ### Additional API Costs (Tag Lookup)
 
+*None of these are incurred — the lookup waterfall was never built. Costed here
+for whenever it is.*
+
 | Service | Cost |
 |---|---|
 | SerpApi (Google Lens + Shopping) | ~£0.001 per search; ~£1/1,000 searches |
@@ -367,17 +394,18 @@ Budget ~£0.005 additional per listing that has tag data worth looking up.
 
 ## Tech Stack
 
-### Recommended: Next.js + Supabase + Vercel + Cloudflare R2
+### As planned vs. as built
 
-| Layer | Tool | Why |
+| Layer | Tool | Status |
 |---|---|---|
-| Frontend + API | Next.js (App Router) | React, handles UI and API routes, huge ecosystem |
-| Database + Auth | Supabase | Postgres + free tier + built-in auth |
-| Image storage | Cloudflare R2 | Zero egress fees — critical for image-heavy apps |
-| AI vision + generation | Anthropic API (Claude Sonnet) | Best multi-image + description quality |
-| Product lookup | SerpApi | Google Lens + Google Shopping programmatic access |
-| Barcode decode | `pyzbar` (Python) or `zxing-js` (browser) | Open source, no API cost |
-| Deployment | Vercel | One-click, auto preview deployments |
+| API | Next.js (App Router) | **Adopted** — API routes only, no UI (ADR-0002) |
+| Database + Auth | Supabase | **Adopted** — identity, Enabled Platforms, Allowance meter |
+| Image storage | Cloudflare R2 | **Never adopted.** Photos are sent to the model in the request and not stored |
+| AI vision + generation | Anthropic API | **Adopted** — Sonnet 5 for analysis and valuation, Haiku 4.5 for formatting and refinement |
+| Product lookup | SerpApi | **Never adopted.** Comparables come from the model's web search (ADR-0005) |
+| Barcode decode | `pyzbar` / `zxing-js` | **Never adopted.** Tag OCR happens inside the `analyse` call |
+| Client | Native SwiftUI | **Replaces the browser** (ADR-0001) |
+| Deployment | Vercel | **Adopted** |
 
 ### Estimated Monthly Cost at MVP Scale
 
@@ -385,10 +413,10 @@ Budget ~£0.005 additional per listing that has tag data worth looking up.
 |---|---|
 | Vercel | £0 (hobby) |
 | Supabase | £0 (free tier) |
-| Cloudflare R2 | £0–4/month |
+| ~~Cloudflare R2~~ | *never adopted* |
 | Claude API (1,000 listings) | ~£4–10/month |
-| SerpApi (1,000 tag lookups) | ~£1/month |
-| **Total** | **~£5–15/month** |
+| ~~SerpApi (1,000 tag lookups)~~ | *never adopted* |
+| **Total** | **~£4–10/month** — original estimate, never re-costed against the Valuation's web search |
 
 ---
 
@@ -421,69 +449,66 @@ Budget ~£0.005 additional per listing that has tag data worth looking up.
 
 ---
 
-## Future Features (Post-MVP)
+## Roadmap
 
-### v2 — Accounts & Depop Direct Posting
+*Rewritten 2026-08-31. The original v2–v6 ladder is kept below only where it is
+still live; the rest is recorded as dead so it does not get rebuilt by accident.*
 
-- User accounts (Supabase Auth)
-- Saved listing history and drafts
-- Depop OAuth integration — connect your Depop account, post directly from Bower
-- Background removal (PhotoRoom API or Claid.ai integration)
+### Shipped
 
-### v3 — Smarter Pricing
+- **Accounts** (Supabase Auth) — was "v2". Landed early: the Allowance meter
+  needs someone to meter (ADR-0007).
+- **Live price comparison** — was "v3". Now the Valuation: one Price Band per
+  Enabled Platform, justified by currently-listed Comparables (ADR-0005).
+- **eBay** as a third platform alongside Vinted and Depop.
 
-- Live price comparison: search Vinted/Depop for similar items and show price distribution chart
-- Original retail price retrieved from product lookup (gives "was £X, now selling for £Y" framing)
-- "Listed at" / "Sold for" tracking from your own user base (proprietary pricing dataset over time)
+### Dead — do not revive without reopening the ADR
 
-### v4 — Vinted Direct Posting
+- **Depop direct posting** (was v2) and **Vinted direct posting** (was v4).
+  ADR-0003 removed publishing entirely; the API assessment above is the
+  evidence for it. Bower hands the user text to paste.
+- **Crosslisting and inventory sync** (was v5) — depends on posting, so it dies
+  with it.
+- **PWA first, then Expo/React Native** (was v6) — ADR-0001 made the native
+  SwiftUI app the product. There is no PWA and no React Native.
 
-- Incorporate as a business if needed
-- Apply for Vinted Pro API allowlist
-- One-click Vinted posting (noting the architectural constraint — may require a different model, e.g. browser extension or Vinted Pro business account)
+### Actually next
 
-### v5 — Crosslisting & Inventory Sync
+The backend is done. What remains is the client, tracked as GitHub issues:
 
-- One listing → post to both Vinted and Depop simultaneously
-- Platform-specific variants auto-generated from one photo set
-- Mark as sold on all platforms when one sells (via webhooks)
+| Issue | Work | Who |
+|---|---|---|
+| #11 | Create the Xcode project | human |
+| #15 | Sign in with Apple — needs Apple Developer portal config | human |
+| #16 | Onboarding: what do you sell on? → Enabled Platforms | agent |
+| #12 | Photograph an Item → Neutral Listing | agent |
+| #13 | Valuation and Recommendation screen | agent |
+| #14 | Format the recommended platform and copy it | agent |
 
-### v6 — iPhone App
+Backend latency work in flight: #17 provisional price before the search
+returns, #18 value every platform in one search pass, #19 stream `/api/valuate`.
 
-- Build PWA first (browser camera + home screen shortcut)
-- When ready: Expo (React Native) — React knowledge transfers, same codebase covers Android, Expo EAS handles App Store submission without Xcode
-- Native advantage: use `AVFoundation` for real barcode scanning from the camera (more reliable than server-side barcode decode from uploaded photos)
+### Then
 
----
-
-## App Name Ideas
-
-- **Bower** (current) — clean, action-oriented
-- **Flaunt** — fashion-forward feel
-- **Rack** — clothing rack metaphor
-- **Tagged** — tagging items
-- **Snap & Sell** — describes the action clearly
+- **Scout Mode** — *"I'm in a shop, is this worth buying?"* Deliberately v2.
+- **StoreKit paywall** on the existing meter. ADR-0007 parked it until there is
+  something worth charging for; it is about a week's work on top of the meter.
+- Saved listing history and drafts.
+- Background removal (PhotoRoom or Claid.ai).
+- Original retail price from tag lookup, for "was £X, now £Y" framing.
 
 ---
 
 ## Open Questions
 
-1. **Primary platform for v1**: Both Vinted and Depop from day one, or start with one?
-2. **Monetisation**: Free with usage cap? Subscription (e.g. £5/month for unlimited)? Pay-per-listing?
-3. **Target user**: Occasional seller clearing their wardrobe, or semi-pro reseller doing 20+ items/week? (Affects feature priority significantly)
-4. **Tone presets**: Casual / Professional is a good start. Could add: Vintage Aesthetic, Luxury/Designer, Streetwear/Hype
-5. **Photo coaching UX**: Show suggestions before generating the listing (two-step flow), or generate listing and show suggestions alongside?
+1. **Monetisation** — the meter exists and nothing is charged yet. How big is
+   the free tier, and is it a subscription or pay-per-valuation? (ADR-0007)
+2. **Target user** — occasional wardrobe-clearer, or semi-pro reseller doing
+   20+ items a week? Still open, and it still drives feature priority.
+3. **Tone presets** — Casual / Professional is what ships. Worth adding Vintage
+   Aesthetic, Luxury/Designer, Streetwear/Hype?
+4. **Photo coaching UX** — show suggestions before the listing (two-step), or
+   alongside it?
 
----
-
-## Immediate Next Steps
-
-1. Email `business@depop.com` now — start the partner access conversation early
-2. Set up Next.js + Supabase + Vercel from the official template
-3. Add Cloudflare R2 for image storage
-4. Build the multi-photo upload UI
-5. Wire up Claude with a combined photo-critique + listing-generation prompt
-6. Build the output UI: photo feedback section + listing fields with copy buttons
-7. Add tone toggle and platform selector
-8. Add SerpApi integration for tag-based product lookup
-9. Ship to Vercel and test with 5–10 real wardrobe items
+*Answered since this was written:* primary platform for v1 — all three, with
+the user's Enabled Platforms deciding which get valued.

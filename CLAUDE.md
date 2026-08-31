@@ -11,8 +11,9 @@ It is **an iOS app with a headless backend**. There is no web UI — the Next.js
 exists purely for its API routes and its deployment story on Vercel. If you open this
 repo expecting pages, see `docs/adr/0002-headless-nextjs-api-on-vercel.md`.
 
-Read `CONTEXT.md` for the domain vocabulary and `docs/adr/` for why things are the way
-they are before making architectural changes.
+Read `CONTEXT.md` for the domain vocabulary, `ARCHITECTURE.md` for the call flow and
+what each model call costs, and `docs/adr/` for why things are the way they are before
+making architectural changes.
 
 ## Commands
 

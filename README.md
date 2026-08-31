@@ -7,7 +7,8 @@ It is **an iOS app with a headless backend**. There is no web UI — the Next.js
 app exists purely for its API routes and its deployment story on Vercel. See
 [ADR-0002](./docs/adr/0002-headless-nextjs-api-on-vercel.md).
 
-`CONTEXT.md` holds the domain vocabulary; `docs/adr/` holds the decisions.
+`CONTEXT.md` holds the domain vocabulary, `ARCHITECTURE.md` the call flow,
+and `docs/adr/` the decisions.
 
 ## What it does
 

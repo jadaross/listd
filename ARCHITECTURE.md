@@ -1,58 +1,94 @@
 # Architecture
 
-## LLM Call Flow
+Every route runs on the **Node runtime** and requires a Supabase bearer token —
+there are no anonymous requests, because the Allowance meter needs someone to
+meter ([ADR-0007](./docs/adr/0007-metered-from-day-one.md)). Handlers are
+wrapped in `withAuth` from `src/lib/auth.ts`.
+
+## Call flow
 
 ```mermaid
 flowchart TD
-    User([User]) -->|uploads photos + tone| Upload[Upload Screen]
-    Upload -->|POST /api/analyse\nSONNET 4.6\n1 call| Analyse[Analysis Result\ntitle · description · price\ncondition · category]
+    User([iOS app]) -->|bearer token| Auth{withAuth}
+    Auth -->|401| Reject([Rejected])
 
-    Analyse --> Results[Results Screen]
+    Auth -->|photos + tone| Analyse["POST /api/analyse<br/>SONNET 5 · 1 call<br/>streams SSE"]
+    Analyse --> Neutral["photo scores<br/>tag_data<br/>Neutral Listing"]
 
-    Results -->|POST /api/market\nbackground, parallel| Market[Market Route]
-    Market -->|eBay Browse API| EbayPrices[eBay live prices]
-    Market -->|SerpAPI x2\nvinted.co.uk + depop.com| SerpPrices[Vinted + Depop prices]
-    EbayPrices --> Synth
-    SerpPrices --> Synth[POST /api/market\nHAIKU 4.5\n1 call → recommendation]
-    Synth -->|recommended platform + price| Results
+    Neutral -->|user confirms the item| Valuate["POST /api/valuate<br/>spends 1 Allowance unit"]
+    Valuate --> Profile[("profile.enabled_platforms<br/>read as the caller, never from the body")]
+    Profile --> Bands["SONNET 5 + web_search<br/>1 call per Enabled Platform<br/>run in parallel, cached per item+platform"]
+    Bands --> Recommend["recommend()<br/>pure function — no LLM<br/>Price Band x sell-likelihood, net of fees"]
 
-    Results -->|auto-expand recommended\nPOST /api/format\nHAIKU 4.5\n1 call| Format1[Formatted listing\nfor recommended platform]
-    Format1 --> Results
+    Recommend -->|recommended platform| Format["POST /api/format<br/>HAIKU 4.5 · 1 call<br/>only the platform being shown"]
+    Format --> Listing[Platform-formatted Listing]
 
-    Results -->|user expands another platform\nPOST /api/format\nHAIKU 4.5\n1 call per platform| Format2[Formatted listing\nfor that platform]
-    Format2 --> Results
-
-    Results -->|optional: Post to eBay\nPOST /api/ebay/list| EbayList[eBay Sell Inventory API\nno LLM]
+    Listing -->|user taps Refinement Chips| Refine["POST /api/refine<br/>HAIKU 4.5 · 1 call per round"]
+    Refine --> Listing
+    Listing --> Copy([User copies and pastes])
 
     style Analyse fill:#e0e7ff,stroke:#6366f1
-    style Synth fill:#fef3c7,stroke:#f59e0b
-    style Format1 fill:#fef3c7,stroke:#f59e0b
-    style Format2 fill:#fef3c7,stroke:#f59e0b
+    style Bands fill:#e0e7ff,stroke:#6366f1
+    style Format fill:#fef3c7,stroke:#f59e0b
+    style Refine fill:#fef3c7,stroke:#f59e0b
+    style Recommend fill:#dcfce7,stroke:#16a34a
 ```
 
-## LLM Calls Summary
+## API routes
 
-| Call | Model | When | Trigger |
-|---|---|---|---|
-| `/api/analyse` | claude-sonnet-4-6 | On "Analyse item" click | Always — 1 per item |
-| `/api/market` synthesis | claude-haiku-4-5-20251001 | Background after analyse | Always — 1 per item |
-| `/api/format` | claude-haiku-4-5-20251001 | On platform card expand | Lazy + cached — 1 per platform, max 3 |
-
-**Minimum per item: 2 LLM calls** (analyse + market synthesis)
-**Maximum per item: 5 LLM calls** (analyse + market + format all 3 platforms)
-
-Format calls are lazy — only fired when the user opens a platform card — and cached in React state for the session, so each platform is only formatted once.
-
-## API Routes
-
-| Route | Runtime | Purpose |
+| Route | Purpose | LLM |
 |---|---|---|
-| `POST /api/analyse` | Edge | Photo analysis → neutral listing via Sonnet |
-| `POST /api/format` | Edge | Reformat listing for a specific platform via Haiku |
-| `POST /api/market` | Node.js | Fetch live prices from eBay + SerpAPI, synthesise recommendation via Haiku |
-| `POST /api/group` | Node.js | Group photos by clothing item via Haiku (bulk mode) |
-| `POST /api/ebay/list` | Node.js | Create + publish eBay draft listing via Sell Inventory API |
-| `GET /api/auth/ebay/connect` | Node.js | Initiate eBay OAuth flow |
-| `GET /api/auth/ebay/callback` | Node.js | Handle OAuth callback, store encrypted tokens |
-| `GET /api/auth/ebay/status` | Node.js | Check eBay connection status |
-| `DELETE /api/auth/ebay/disconnect` | Node.js | Remove eBay connection |
+| `POST /api/analyse` | Photos → photo quality scores, tag OCR, Neutral Listing. One JSON object covering all three concerns. Streams SSE. | Sonnet 5 × 1 |
+| `POST /api/valuate` | `ValuationItem` → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. | Sonnet 5 × *n* platforms |
+| `POST /api/format` | Neutral Listing + platform + tone → a Platform-formatted Listing | Haiku 4.5 × 1 |
+| `POST /api/refine` | Platform-formatted Listing + Refinement Chips → a rewritten one | Haiku 4.5 × 1 |
+| `GET` / `PATCH /api/profile` | The caller's Enabled Platforms and Allowance | none |
+
+## Models
+
+Set in one place, `src/lib/llm/client.ts`:
+
+| Job | Model | Why |
+|---|---|---|
+| `analyse` | `claude-sonnet-5` | Multi-image reasoning, and everything downstream is built on its output |
+| `valuation` | `claude-sonnet-5` | Needs `web_search_20260209`, and judging whether a result is genuinely comparable *is* the product |
+| `format` | `claude-haiku-4-5-20251001` | Rewriting text it has already been given |
+| `refine` | `claude-haiku-4-5-20251001` | Same, one instruction at a time |
+
+## Cost per item
+
+| | Calls |
+|---|---|
+| One Enabled Platform | **3** — analyse, one Price Band, one format |
+| Three Enabled Platforms | **5** — analyse, three Price Bands, one format |
+| Each Refinement Chip round | +1 Haiku call |
+
+Only Enabled Platforms are valued, so cost scales with what each user actually
+sells on. Price Bands are cached per item+platform, and `format` runs for the
+platform being shown rather than fanning out across all three
+([ADR-0004](./docs/adr/0004-unified-valuation-core.md)).
+
+## Two things the design deliberately protects
+
+**Enabled Platforms are read from the caller's profile, never from the request
+body.** A client that could name its own platforms could ask for work it had
+not enabled, and the meter charges one unit however many platforms that turns
+out to be.
+
+**The Allowance unit is reserved before the work, not counted after it.** Two
+valuations racing on one account must not both spend the last unit, so the
+check and the decrement are a single SQL statement (`spend_allowance`). Work
+that then fails is refunded — a failed valuation costs the user nothing.
+
+## What is not here
+
+- **No publishing.** The eBay OAuth flow, token encryption and Sell Inventory
+  call were removed ([ADR-0003](./docs/adr/0003-ebay-oauth-and-publishing-removed.md));
+  Bower hands the user text to paste.
+- **No sold-price data.** Comparables are what people are *asking* today, found
+  by web search ([ADR-0005](./docs/adr/0005-asking-price-valuation.md)). The
+  SerpAPI + Apify + scraper stack this used to need is gone.
+- **No web UI.** The Next.js app is API routes only
+  ([ADR-0001](./docs/adr/0001-ios-only-web-ui-removed.md),
+  [ADR-0002](./docs/adr/0002-headless-nextjs-api-on-vercel.md)).
+- **No image storage.** Photos are sent in the request and not persisted.

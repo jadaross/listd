@@ -28,4 +28,25 @@ The prototype uses **Instrument Serif** (wordmark) and **Geist** (UI). The app f
 
 ## Backend
 
-The screens render mock data (matching the prototype). When ready, point the API client at the Next.js edge routes already deployed from this repo (`/api/analyse`, `/api/group`) — the JSON shapes in `src/lib/types.ts` already cover the response.
+The screens render mock data (matching the prototype) and do no networking at
+all. See ADR-0001 — these files are a visual reference; the real app gets built
+beside them.
+
+When you wire up a real client, the routes are deployed from this repo and run
+on the **Node runtime**, not the edge (ADR-0002):
+
+| Route | Purpose |
+|---|---|
+| `POST /api/analyse` | Photos → photo scores, tag data, and a Neutral Listing. Streams SSE. |
+| `POST /api/valuate` | An item → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. |
+| `POST /api/format` | Neutral Listing + platform + tone → a Platform-formatted Listing |
+| `POST /api/refine` | A Platform-formatted Listing + Refinement Chips → a rewritten one |
+| `GET` / `PATCH /api/profile` | The caller's Enabled Platforms and Allowance |
+
+**Every route requires a Supabase bearer token** — there are no anonymous
+requests (ADR-0007). Sign in with Apple is issue #15 and has to land before any
+of these can be called.
+
+The JSON shapes in `src/lib/types.ts` cover every response, and the Refinement
+Chip vocabulary in `src/lib/chip-vocab.ts` is shared with `Models.swift` — keep
+the two in step.
