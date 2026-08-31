@@ -1,9 +1,9 @@
 import SwiftUI
 
-struct WattleTabBar: View {
+struct BowerTabBar: View {
     enum Tab: String { case new, listings, you }
     @Binding var screen: Screen
-    let theme: WattleTheme
+    let theme: BowerTheme
 
     private var activeTab: Tab {
         switch screen {
@@ -44,7 +44,7 @@ struct WattleTabBar: View {
         } label: {
             VStack(spacing: 3) {
                 icon
-                Text(label).font(WattleFont.ui(10, weight: .medium))
+                Text(label).font(BowerFont.ui(10, weight: .medium))
             }
             .foregroundStyle(activeTab == tab ? theme.accent : theme.muted)
             .frame(maxWidth: .infinity)

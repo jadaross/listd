@@ -16,7 +16,7 @@ struct PhotoTile: View {
             StripePattern(stripe: stripe)
             if showLabel {
                 Text(photo.label.uppercased())
-                    .font(WattleFont.mono(9, weight: .regular))
+                    .font(BowerFont.mono(9, weight: .regular))
                     .tracking(0.7)
                     .foregroundStyle(labelTone)
                     .padding(.horizontal, 6).padding(.vertical, 2)

@@ -1,20 +1,20 @@
-# Wattle iOS
+# Bower iOS
 
-Native SwiftUI app — port of the `Wattle iOS Prototype` design (Claude Design handoff bundle).
+Native SwiftUI app — port of the `Bower iOS Prototype` design (Claude Design handoff bundle).
 
 ## Setup (one-time, ~30 seconds)
 
 1. Open Xcode → **File → New → Project…**
 2. Choose **iOS → App**, click Next
 3. Settings:
-   - **Product Name:** `Wattle`
+   - **Product Name:** `Bower`
    - **Interface:** SwiftUI
    - **Language:** Swift
    - **Storage:** None
-   - Bundle identifier: e.g. `com.wattle.app`
-4. Save location: this `ios/` directory (so the project sits at `ios/Wattle.xcodeproj`)
-5. In the Project Navigator, **delete the auto-generated `ContentView.swift` and `WattleApp.swift`** (move to trash) — the ones in this folder replace them.
-6. Right-click the `Wattle` group → **Add Files to "Wattle"…** → select the `Wattle/` folder in this directory → make sure "Create folder references" is selected → Add. (Xcode 16+ filesystem-synced folders work great here.)
+   - Bundle identifier: e.g. `com.bower.app`
+4. Save location: this `ios/` directory (so the project sits at `ios/Bower.xcodeproj`)
+5. In the Project Navigator, **delete the auto-generated `ContentView.swift` and `BowerApp.swift`** (move to trash) — the ones in this folder replace them.
+6. Right-click the `Bower` group → **Add Files to "Bower"…** → select the `Bower/` folder in this directory → make sure "Create folder references" is selected → Add. (Xcode 16+ filesystem-synced folders work great here.)
 7. Set deployment target to **iOS 17.0**.
 8. Build & run on the iPhone 15 Pro simulator.
 

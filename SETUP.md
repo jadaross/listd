@@ -1,4 +1,4 @@
-# Wattle — setup
+# Bower — setup
 
 ## Environment
 
@@ -19,7 +19,7 @@ writing. It must never reach the iOS client.
 
 ## Supabase
 
-The project is `wattle` (`vnpjoujblpjygpyvwltg`, eu-north-1). It is on the free
+The project is `bower` (`vnpjoujblpjygpyvwltg`, eu-north-1). It is on the free
 plan, which allows **two active projects per organisation** — if a resume is
 ever refused, that cap is why, and pausing another project frees a slot.
 

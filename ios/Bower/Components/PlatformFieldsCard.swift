@@ -6,7 +6,7 @@ import UIKit
 struct PlatformFieldsCard: View {
     let platformName: String
     let fields: [ListingField]
-    let theme: WattleTheme
+    let theme: BowerTheme
 
     var body: some View {
         if fields.isEmpty {
@@ -32,23 +32,23 @@ struct PlatformFieldsCard: View {
 
 private struct PlatformFieldRow: View {
     let field: ListingField
-    let theme: WattleTheme
+    let theme: BowerTheme
     @State private var copied = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(field.label.uppercased())
-                    .font(WattleFont.ui(10, weight: .semibold))
+                    .font(BowerFont.ui(10, weight: .semibold))
                     .tracking(0.9)
                     .foregroundStyle(theme.muted)
                 Text(field.value)
-                    .font(WattleFont.ui(14, weight: .medium))
+                    .font(BowerFont.ui(14, weight: .medium))
                     .foregroundStyle(theme.text)
                     .fixedSize(horizontal: false, vertical: true)
                 if let hint = field.hint {
                     Text(hint)
-                        .font(WattleFont.ui(11))
+                        .font(BowerFont.ui(11))
                         .foregroundStyle(theme.muted)
                 }
             }
@@ -65,7 +65,7 @@ private struct PlatformFieldRow: View {
                         Text("Copy")
                     }
                 }
-                .font(WattleFont.ui(11, weight: .medium))
+                .font(BowerFont.ui(11, weight: .medium))
                 .foregroundStyle(copied ? theme.accent : theme.muted)
                 .padding(.horizontal, 6).padding(.vertical, 4)
             }

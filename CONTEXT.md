@@ -1,6 +1,6 @@
-# CONTEXT — wattle domain glossary
+# CONTEXT — bower domain glossary
 
-wattle values a secondhand item from photographs and tells the user what to write, where to post it, and what to ask for it.
+bower values a secondhand item from photographs and tells the user what to write, where to post it, and what to ask for it.
 
 This is a glossary, not a spec. Use this vocabulary in code, prompts, and conversation. If a new concept earns its name during a refactor, add it here. Architectural decisions live in `docs/adr/`.
 
@@ -28,7 +28,7 @@ _Avoid_: tweak, filter, tag
 ## Platforms
 
 **Platform**:
-A resale destination — Vinted, Depop, or eBay. wattle writes for them and values against them; it does not post to them.
+A resale destination — Vinted, Depop, or eBay. bower writes for them and values against them; it does not post to them.
 _Avoid_: marketplace, channel, site
 
 **Enabled Platform**:
@@ -41,7 +41,7 @@ The answer to *what is this Item worth?* — one Price Band per Enabled Platform
 _Avoid_: market intelligence, pricing, appraisal
 
 **Comparable**:
-A currently-listed item, similar enough to the user's Item to inform its value. What someone is **asking** today — not what anything sold for. wattle has no access to sold prices; see ADR-0005.
+A currently-listed item, similar enough to the user's Item to inform its value. What someone is **asking** today — not what anything sold for. bower has no access to sold prices; see ADR-0005.
 _Avoid_: comp, sold comp, match
 
 **Price Band**:

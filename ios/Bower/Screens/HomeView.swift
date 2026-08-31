@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var state: AppState
-    let theme: WattleTheme
+    let theme: BowerTheme
 
     var body: some View {
         ScrollView {
@@ -10,17 +10,17 @@ struct HomeView: View {
                 // Wordmark
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        Text("wattle")
-                            .font(WattleFont.serif(56))
+                        Text("bower")
+                            .font(BowerFont.serif(56))
                             .foregroundStyle(theme.text)
                         Text(".")
-                            .font(WattleFont.serif(56))
+                            .font(BowerFont.serif(56))
                             .foregroundStyle(theme.accent)
                     }
                     .padding(.top, 8)
 
                     Text("Snap your item — we'll write the listing and tell you where to post it.")
-                        .font(WattleFont.ui(14))
+                        .font(BowerFont.ui(14))
                         .foregroundStyle(theme.muted)
                         .lineSpacing(2)
                         .frame(maxWidth: 280, alignment: .leading)
@@ -43,7 +43,7 @@ struct HomeView: View {
                                 Image(systemName: "camera")
                                 Text("Camera")
                             }
-                            .font(WattleFont.ui(15, weight: .semibold))
+                            .font(BowerFont.ui(15, weight: .semibold))
                             .foregroundStyle(theme.bg)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -56,7 +56,7 @@ struct HomeView: View {
                                 Image(systemName: "photo.on.rectangle")
                                 Text("Library")
                             }
-                            .font(WattleFont.ui(15, weight: .semibold))
+                            .font(BowerFont.ui(15, weight: .semibold))
                             .foregroundStyle(theme.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)

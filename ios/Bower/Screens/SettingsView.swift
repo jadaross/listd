@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    let theme: WattleTheme
+    let theme: BowerTheme
 
     private struct Section { let title: String; let rows: [Row] }
     private struct Row { let label: String; let value: String }
@@ -33,12 +33,12 @@ struct SettingsView: View {
                             ForEach(Array(section.rows.enumerated()), id: \.offset) { i, r in
                                 HStack {
                                     Text(r.label)
-                                        .font(WattleFont.ui(14))
+                                        .font(BowerFont.ui(14))
                                         .foregroundStyle(theme.text)
                                     Spacer()
                                     HStack(spacing: 6) {
                                         Text(r.value)
-                                            .font(WattleFont.ui(14))
+                                            .font(BowerFont.ui(14))
                                             .foregroundStyle(theme.muted)
                                         Image(systemName: "chevron.right")
                                             .font(.system(size: 10, weight: .semibold))
@@ -68,16 +68,16 @@ struct SettingsView: View {
             ZStack {
                 Circle().fill(theme.accent.opacity(0.13))
                 Text("EM")
-                    .font(WattleFont.ui(20, weight: .semibold))
+                    .font(BowerFont.ui(20, weight: .semibold))
                     .foregroundStyle(theme.accent)
             }
             .frame(width: 52, height: 52)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Ellie M.")
-                    .font(WattleFont.ui(17, weight: .semibold))
+                    .font(BowerFont.ui(17, weight: .semibold))
                     .foregroundStyle(theme.text)
-                Text("wattle Pro · 47 listings")
-                    .font(WattleFont.ui(13))
+                Text("bower Pro · 47 listings")
+                    .font(BowerFont.ui(13))
                     .foregroundStyle(theme.muted)
             }
             Spacer()

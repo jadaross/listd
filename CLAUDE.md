@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-wattle values a secondhand item from photographs and tells the user what to write,
+bower values a secondhand item from photographs and tells the user what to write,
 where to post it, and what to ask for it.
 
 It is **an iOS app with a headless backend**. There is no web UI — the Next.js app
@@ -55,7 +55,7 @@ work it had not enabled.
 |---|---|
 | `src/lib/types.ts` | All shared TypeScript types |
 | `src/lib/llm/*` | One module per Anthropic call — owns its prompt, SDK invocation, and parsing |
-| `src/lib/chip-vocab.ts` | Refinement Chip vocabulary, shared with iOS (`ios/Wattle/Models.swift`) |
+| `src/lib/chip-vocab.ts` | Refinement Chip vocabulary, shared with iOS (`ios/Bower/Models.swift`) |
 | `src/platforms/*` | Per-platform knowledge: `metadata.ts` (name, fees, colour) and `listing-spec.ts` (prompt fragment, field schema, validation) |
 | `src/lib/auth.ts` | Bearer-token verification and the `withAuth` route wrapper |
 | `src/lib/supabase.ts` | The three Supabase clients — anon, per-user (RLS applies), service role (RLS bypassed) |
@@ -89,4 +89,4 @@ Format **only the platform being shown** — never fan out across all three. See
 
 Warm direction, carried over to iOS: `--bg #f6f2eb`, `--card #fff`, `--text #1c1a16`,
 `--muted #86807a`, `--subtle #efebe3`, `--accent #3b5cff`. Fonts: **Instrument Serif**
-for the `wattle.` wordmark and expressive headlines, **Geist** for everything else.
+for the `bower.` wordmark and expressive headlines, **Geist** for everything else.

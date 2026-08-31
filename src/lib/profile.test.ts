@@ -90,7 +90,7 @@ describe("validatePlatformSet", () => {
     expect(() => validatePlatformSet("vinted")).toThrow(InvalidPlatformSet);
   });
 
-  it("rejects a platform wattle does not write for", () => {
+  it("rejects a platform bower does not write for", () => {
     expect(() => validatePlatformSet(["grailed"])).toThrow(/Unknown platform: grailed/);
   });
 });

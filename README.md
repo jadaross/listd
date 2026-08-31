@@ -1,6 +1,6 @@
-# wattle
+# bower
 
-wattle values a secondhand item from photographs and tells you what to write,
+bower values a secondhand item from photographs and tells you what to write,
 where to post it, and what to ask for it.
 
 It is **an iOS app with a headless backend**. There is no web UI — the Next.js
@@ -21,7 +21,7 @@ app exists purely for its API routes and its deployment story on Vercel. See
 5. The platform most likely to sell it for the most is **recommended**, and the
    listing is rewritten in that platform's voice, ready to copy.
 
-wattle writes for Vinted, Depop and eBay. It does not post to them —
+bower writes for Vinted, Depop and eBay. It does not post to them —
 [ADR-0003](./docs/adr/0003-ebay-oauth-and-publishing-removed.md) removed
 publishing, and asking prices come from live comparables rather than sold data
 ([ADR-0005](./docs/adr/0005-asking-price-valuation.md)).

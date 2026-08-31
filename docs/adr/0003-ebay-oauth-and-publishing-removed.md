@@ -1,6 +1,6 @@
 # eBay OAuth and publishing are removed
 
-The eBay integration — four auth routes, AES-256-GCM token encryption, refresh logic, and a publish call — was the heaviest thing in the codebase at roughly 390 lines, and the only reason Supabase existed. We removed it entirely: wattle now hands the user listing text to paste, rather than posting on their behalf.
+The eBay integration — four auth routes, AES-256-GCM token encryption, refresh logic, and a publish call — was the heaviest thing in the codebase at roughly 390 lines, and the only reason Supabase existed. We removed it entirely: bower now hands the user listing text to paste, rather than posting on their behalf.
 
 ## Consequences
 

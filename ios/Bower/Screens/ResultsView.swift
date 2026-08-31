@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ResultsView: View {
     @EnvironmentObject var state: AppState
-    let theme: WattleTheme
+    let theme: BowerTheme
 
     @State private var photoSheet: AdvicePhoto? = nil
     @State private var capturing: CapturingState? = nil
@@ -59,11 +59,11 @@ struct ResultsView: View {
                 .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 2) {
                 Text(MockData.item.title)
-                    .font(WattleFont.ui(15, weight: .semibold))
+                    .font(BowerFont.ui(15, weight: .semibold))
                     .foregroundStyle(theme.text)
                     .lineLimit(1)
                 Text("\(MockData.item.brand) · Size \(MockData.item.size) · \(MockData.item.condition)")
-                    .font(WattleFont.ui(12))
+                    .font(BowerFont.ui(12))
                     .foregroundStyle(theme.muted)
             }
             Spacer(minLength: 0)
@@ -87,9 +87,9 @@ struct ResultsView: View {
                         Text("Best on ").foregroundStyle(theme.text)
                         + Text(winner.name).foregroundStyle(winner.color)
                     }
-                    .font(WattleFont.ui(14, weight: .semibold))
+                    .font(BowerFont.ui(14, weight: .semibold))
                     Text("Tap to see why · 247 comps scanned")
-                        .font(WattleFont.ui(12))
+                        .font(BowerFont.ui(12))
                         .foregroundStyle(theme.muted)
                 }
                 Spacer()
@@ -121,7 +121,7 @@ struct ResultsView: View {
                         }
                         Text(p.name)
                     }
-                    .font(WattleFont.ui(13, weight: .semibold))
+                    .font(BowerFont.ui(13, weight: .semibold))
                     .foregroundStyle(active ? theme.bg : theme.text)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -144,7 +144,7 @@ struct ResultsView: View {
                 Eyebrow(text: "Boost accuracy", color: theme.muted)
                 Spacer()
                 Text("\(MockData.advicePhotos.count - state.addedPhotos.count) suggested")
-                    .font(WattleFont.ui(11))
+                    .font(BowerFont.ui(11))
                     .foregroundStyle(theme.muted)
             }
             HStack(spacing: 8) {
@@ -159,7 +159,7 @@ struct ResultsView: View {
                             .font(.system(size: 12, weight: .semibold))
                         Text("Regenerate with new photo\(state.pendingAddedPhotoCount > 1 ? "s" : "")")
                     }
-                    .font(WattleFont.ui(13, weight: .semibold))
+                    .font(BowerFont.ui(13, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
@@ -192,11 +192,11 @@ struct ResultsView: View {
                     }
                 }
                 Text(ap.label)
-                    .font(WattleFont.ui(12, weight: .semibold))
+                    .font(BowerFont.ui(12, weight: .semibold))
                     .foregroundStyle(theme.text)
                     .multilineTextAlignment(.leading)
                 Text(ap.hint)
-                    .font(WattleFont.ui(10))
+                    .font(BowerFont.ui(10))
                     .foregroundStyle(theme.muted)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -235,9 +235,9 @@ struct ResultsView: View {
 
             if state.regenerating {
                 HStack(spacing: 8) {
-                    WattleSpinner(color: theme.accent)
+                    BowerSpinner(color: theme.accent)
                     Text("Rewriting…")
-                        .font(WattleFont.ui(12))
+                        .font(BowerFont.ui(12))
                         .foregroundStyle(theme.text)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 8)
@@ -260,7 +260,7 @@ struct ResultsView: View {
             onCommit: { state.saveEdit(.title, $0) }
         ) {
             Text(caption.title)
-                .font(WattleFont.ui(16, weight: .semibold))
+                .font(BowerFont.ui(16, weight: .semibold))
                 .foregroundStyle(theme.text)
                 .lineSpacing(2)
         }
@@ -276,7 +276,7 @@ struct ResultsView: View {
             onCommit: { state.saveEdit(.body, $0) }
         ) {
             Text(caption.body)
-                .font(WattleFont.ui(14))
+                .font(BowerFont.ui(14))
                 .foregroundStyle(theme.text)
                 .lineSpacing(4)
         }
@@ -295,7 +295,7 @@ struct ResultsView: View {
             FlowLayout(spacing: 6, runSpacing: 6) {
                 ForEach(caption.tags, id: \.self) { tg in
                     Text("#\(tg)")
-                        .font(WattleFont.mono(12))
+                        .font(BowerFont.mono(12))
                         .foregroundStyle(theme.text)
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(theme.subtle, in: RoundedRectangle(cornerRadius: 6))
@@ -311,7 +311,7 @@ struct ResultsView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(theme.accent)
                 Text("Generated in 1.4s · \(caption.body.count / 5) words")
-                    .font(WattleFont.ui(12))
+                    .font(BowerFont.ui(12))
                     .foregroundStyle(theme.muted)
             }
             Spacer()
@@ -338,7 +338,7 @@ struct ResultsView: View {
                 if !state.chips.isEmpty {
                     Button("Reset", action: state.resetChips)
                         .buttonStyle(.plain)
-                        .font(WattleFont.ui(12, weight: .medium))
+                        .font(BowerFont.ui(12, weight: .medium))
                         .foregroundStyle(theme.accent)
                 }
             }
@@ -356,7 +356,7 @@ struct ResultsView: View {
                                 }
                                 Text(c.label)
                             }
-                            .font(WattleFont.ui(13, weight: .medium))
+                            .font(BowerFont.ui(13, weight: .medium))
                             .foregroundStyle(active ? .white : theme.text)
                             .padding(.horizontal, 14).padding(.vertical, 9)
                             .background(active ? theme.accent : theme.card, in: Capsule())
@@ -381,7 +381,7 @@ struct ResultsView: View {
                     .font(.system(size: 14, weight: .bold))
                 Text("Start a new listing")
             }
-            .font(WattleFont.ui(14, weight: .semibold))
+            .font(BowerFont.ui(14, weight: .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
@@ -405,10 +405,10 @@ struct ResultsView: View {
                 VStack(spacing: 0) {
                     VStack(spacing: 2) {
                         Text(ap.label)
-                            .font(WattleFont.ui(13, weight: .semibold))
+                            .font(BowerFont.ui(13, weight: .semibold))
                             .foregroundStyle(theme.text)
                         Text(ap.hint)
-                            .font(WattleFont.ui(12))
+                            .font(BowerFont.ui(12))
                             .foregroundStyle(theme.muted)
                     }
                     .padding(.horizontal, 16).padding(.vertical, 13)
@@ -423,7 +423,7 @@ struct ResultsView: View {
 
                 Button("Cancel") { photoSheet = nil }
                     .buttonStyle(.plain)
-                    .font(WattleFont.ui(15, weight: .semibold))
+                    .font(BowerFont.ui(15, weight: .semibold))
                     .foregroundStyle(theme.accent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -437,7 +437,7 @@ struct ResultsView: View {
     private func sheetButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(WattleFont.ui(15, weight: .medium))
+                .font(BowerFont.ui(15, weight: .medium))
                 .foregroundStyle(theme.accent)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 16).padding(.vertical, 14)
@@ -463,11 +463,11 @@ struct ResultsView: View {
                 .ignoresSafeArea()
             VStack(spacing: 18) {
                 Text(c.source == .camera ? "CAPTURING" : "UPLOADING")
-                    .font(WattleFont.mono(11))
+                    .font(BowerFont.mono(11))
                     .tracking(1.1)
                     .foregroundStyle(.white.opacity(0.6))
                 Text(c.label)
-                    .font(WattleFont.serif(22))
+                    .font(BowerFont.serif(22))
                     .foregroundStyle(.white)
                 if c.source == .camera {
                     Circle()

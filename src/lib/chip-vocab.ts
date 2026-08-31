@@ -1,4 +1,4 @@
-// Chip vocabulary shared with the iOS app (FeedbackChip in ios/Wattle/Models.swift).
+// Chip vocabulary shared with the iOS app (FeedbackChip in ios/Bower/Models.swift).
 // Both clients send the same `instruction` strings to /api/refine.
 
 export type ChipId =

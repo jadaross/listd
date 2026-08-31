@@ -191,11 +191,11 @@ ENV_FILE=".env.local"
 # root. Move there rather than complaining.
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ ! -f "supabase/migrations/0001_identity_and_metering.sql" ]]; then
-  printf 'Run this from the wattle repo — migration file not found.\n' >&2
+  printf 'Run this from the bower repo — migration file not found.\n' >&2
   exit 1
 fi
 
-banner "wattle — unblock the build"
+banner "bower — unblock the build"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
 stage "Anthropic — top up credits"
@@ -235,7 +235,7 @@ pause
 # ── 2 ─────────────────────────────────────────────────────────────────────
 stage "Xcode — create the project"
 say "Issue #11. Four tickets sit behind this one (#12, #13, #14, #16), and it"
-say "is now the ONLY thing standing between wattle and a running app — the"
+say "is now the ONLY thing standing between bower and a running app — the"
 say "backend is done: auth, the meter and the Valuation are all live."
 say ""
 say "There is no .xcodeproj anywhere in this repo yet. The Swift files under"
@@ -246,7 +246,7 @@ open_url "https://developer.apple.com/xcode/"
 note "  (that link is only a fallback — Xcode is already installed)"
 step "Open Xcode → File → New → Project…"
 step "iOS → App → Next"
-step "Product Name: Wattle"
+step "Product Name: Bower"
 step "Interface: SwiftUI · Language: Swift · Storage: None · Tests: on"
 step "Next, then save it INSIDE this repo — the monorepo is deliberate."
 note "  Suggested location: $(pwd)/ios-app"

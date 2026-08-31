@@ -1,4 +1,4 @@
-# Wattle — App Planning Document
+# Bower — App Planning Document
 
 > AI-powered listing generator for Vinted & Depop. Upload photos of your clothes, get a photo critique, tag lookup, and a ready-to-post listing in seconds.
 
@@ -13,7 +13,7 @@ Listing clothes on Vinted or Depop is tedious. You need to:
 - Research a fair price
 - Add hashtags
 
-Most people skip half of it or write lazy listings that don't sell. Wattle does all of this for you — including telling you which photos to retake before you even start.
+Most people skip half of it or write lazy listings that don't sell. Bower does all of this for you — including telling you which photos to retake before you even start.
 
 ---
 
@@ -235,7 +235,7 @@ Starts at 500 active item slots. Account manager review after 30 days.
 
 **Bot detection:** Vinted deployed DataDome in ~2025. Unofficial automation is actively detected.
 
-**Bottom line for Wattle:** The Vinted Pro API cannot power a multi-user "post on behalf of users" feature. Even if you got approved, you'd be posting as your own business account, not as each individual user. This is a fundamental architectural mismatch. **For Vinted: the copy-paste approach is not just the easy option — it's the only realistic option for a multi-user product.**
+**Bottom line for Bower:** The Vinted Pro API cannot power a multi-user "post on behalf of users" feature. Even if you got approved, you'd be posting as your own business account, not as each individual user. This is a fundamental architectural mismatch. **For Vinted: the copy-paste approach is not just the easy option — it's the only realistic option for a multi-user product.**
 
 ---
 
@@ -267,7 +267,7 @@ Photos: array with `url` + optional `#type` tags (`cover-image`, `back`, `tag`, 
 
 **Sandbox environment** available for testing without real listings.
 
-**Bottom line for Wattle:** Depop is the right first platform to pursue official API access for. The OAuth model supports multi-user posting, crosslisting is ToS-approved, and there's a clear (if relationship-gated) path to access. **Email business@depop.com early — even before you have users — and start the conversation.**
+**Bottom line for Bower:** Depop is the right first platform to pursue official API access for. The OAuth model supports multi-user posting, crosslisting is ToS-approved, and there's a clear (if relationship-gated) path to access. **Email business@depop.com early — even before you have users — and start the conversation.**
 
 ---
 
@@ -427,7 +427,7 @@ Budget ~£0.005 additional per listing that has tag data worth looking up.
 
 - User accounts (Supabase Auth)
 - Saved listing history and drafts
-- Depop OAuth integration — connect your Depop account, post directly from Wattle
+- Depop OAuth integration — connect your Depop account, post directly from Bower
 - Background removal (PhotoRoom API or Claid.ai integration)
 
 ### v3 — Smarter Pricing
@@ -458,7 +458,7 @@ Budget ~£0.005 additional per listing that has tag data worth looking up.
 
 ## App Name Ideas
 
-- **Wattle** (current) — clean, action-oriented
+- **Bower** (current) — clean, action-oriented
 - **Flaunt** — fashion-forward feel
 - **Rack** — clothing rack metaphor
 - **Tagged** — tagging items

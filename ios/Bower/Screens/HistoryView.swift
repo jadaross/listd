@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HistoryView: View {
-    let theme: WattleTheme
+    let theme: BowerTheme
 
     var body: some View {
         ScrollView {
@@ -26,19 +26,19 @@ struct HistoryView: View {
                                 .frame(width: 44, height: 44)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(it.title)
-                                    .font(WattleFont.ui(14, weight: .medium))
+                                    .font(BowerFont.ui(14, weight: .medium))
                                     .foregroundStyle(theme.text)
                                 Text("\(it.platform) · \(it.when)")
-                                    .font(WattleFont.ui(12))
+                                    .font(BowerFont.ui(12))
                                     .foregroundStyle(theme.muted)
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text("£\(it.price)")
-                                    .font(WattleFont.ui(14, weight: .semibold))
+                                    .font(BowerFont.ui(14, weight: .semibold))
                                     .foregroundStyle(theme.text)
                                 Text(it.status.uppercased())
-                                    .font(WattleFont.ui(10, weight: .semibold))
+                                    .font(BowerFont.ui(10, weight: .semibold))
                                     .tracking(0.7)
                                     .foregroundStyle(it.status == "sold"
                                                      ? Color(hex: 0x1F8A5B)
