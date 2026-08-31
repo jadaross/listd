@@ -105,7 +105,8 @@ native issue dependencies are enabled, so the frontier renders in GitHub's own U
 | Blocking | Native issue dependencies, not body text |
 | The frontier | Open sub-issues of the map that are unassigned and have no open blocker |
 
-Both dependency APIs take a **numeric issue id, not the issue number** — the
+Both dependency APIs take a **numeric issue id, not the issue number**, and it must
+be sent with `-F` (typed) rather than `-f` (string) — between them, the two
 single easiest thing to get wrong here.
 
 ```bash
@@ -113,10 +114,10 @@ single easiest thing to get wrong here.
 gh api repos/jadaross/bower/issues/<number> --jq .id
 
 # attach a ticket to the map
-gh api -X POST repos/jadaross/bower/issues/<map>/sub_issues -f sub_issue_id=<id>
+gh api -X POST repos/jadaross/bower/issues/<map>/sub_issues -F sub_issue_id=<id>
 
 # B is blocked by A
-gh api -X POST repos/jadaross/bower/issues/<B>/dependencies/blocked_by -f issue_id=<id-of-A>
+gh api -X POST repos/jadaross/bower/issues/<B>/dependencies/blocked_by -F issue_id=<id-of-A>
 
 # the frontier
 gh issue list --label wayfinder:grilling --label wayfinder:research \
