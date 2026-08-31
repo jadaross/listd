@@ -13,3 +13,34 @@ This replaced a stack of SerpAPI + Apify + a Google `site:` scraper — three de
 - The service is deliberately shaped so a **paid comps feed can replace the implementation** without touching a caller, if the product proves out.
 - **Always a range with confidence, never a single number.** Scout's buy/no-buy call needs the error bar: "worth £18–£26, so £6 is a clear buy" and "worth £8–£26, too uncertain to call" are different answers.
 - We say "listed at", never "sells for" — asking-price data cannot support a sold-price claim, and that claim is what generates one-star reviews when an item sits unsold at the quoted number.
+
+## Amendment (2026-08-31): a search-free band is allowed, and can never win
+
+v1 ships a Price Band derived from the photographs alone, with no web search
+behind it — the `price_min`/`price_max` pair `analyse` already produces at no
+extra cost. That is the "pure model estimate" this ADR set out to reject, so the
+rejection needs narrowing rather than quietly ignoring.
+
+What this ADR rejects is a model estimate presented **as researched**. What v1
+ships is a model estimate presented **as a guess**, and the distinction is
+carried in three places rather than left to UI copy:
+
+- **It has no Comparables, and the type says so.** `comparables` is empty, which
+  is what `recommend()` already keys on. An unevidenced band cannot win a
+  Recommendation — that guard predates this amendment, and it is what makes the
+  estimate safe to ship at all.
+- **It never says "listed at".** That phrasing belongs to real comparables. A
+  search-free band says "roughly", and names the photographs as its source.
+- **It is one band, not one per Platform.** The estimate is platform-agnostic
+  because there is no evidence with which to tell platforms apart. Per-platform
+  bands remain search-only.
+
+The web search is not deleted — it becomes **on demand**. The user gets a number
+immediately on every Item and spends the slow, metered call only when they ask
+for evidence. The Recommendation appears with that evidence and not before, so
+"where to post it" is still never answered by a guess.
+
+This settles what the original decision left implicit: the reason to prefer
+asking prices was never that a model estimate is worthless, but that an
+*unlabelled* one is. Labelled, and barred from the decisions that need evidence,
+it is the fastest useful thing bower can put on screen.
