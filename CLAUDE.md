@@ -107,7 +107,7 @@ native issue dependencies are enabled, so the frontier renders in GitHub's own U
 
 Both dependency APIs take a **numeric issue id, not the issue number**, and it must
 be sent with `-F` (typed) rather than `-f` (string) — between them, the two
-single easiest thing to get wrong here.
+easiest things to get wrong here.
 
 ```bash
 # id for a given issue number
