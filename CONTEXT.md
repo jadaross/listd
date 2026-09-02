@@ -34,6 +34,12 @@ _Avoid_: marketplace, channel, site
 **Enabled Platform**:
 A Platform the user has told us they actually sell on. Only Enabled Platforms are valued, and only they can be recommended.
 
+**Preferred Platform**:
+The one Enabled Platform bower writes for by default, set by the user and changed in Settings. It answers "which listing do I show first?" — a standing preference, not a judgement about this Item.
+_Avoid_: default platform, primary platform, main platform
+
+Three Platform concepts, easily confused. **Enabled** is what the user sells on — a set. **Preferred** is which of those to write for first — a standing choice. **Recommendation** is where this particular Item should go — earned from Comparables, and only after a search. Preferred and Recommendation can disagree; when they do, the Recommendation is the new information and says so, but it never silently rewrites what the user chose.
+
 ## Valuation
 
 **Valuation**:
