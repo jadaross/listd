@@ -4,10 +4,12 @@ vi.mock("@/lib/auth", async () => (await import("@/test/auth-mock")).authMock())
 
 const getProfile = vi.fn();
 const setEnabledPlatforms = vi.fn();
+const setPreferredPlatform = vi.fn();
 vi.mock("@/lib/profile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/profile")>()),
   getProfile,
   setEnabledPlatforms,
+  setPreferredPlatform,
 }));
 
 const { authState, resetAuthState } = await import("@/test/auth-mock");
@@ -15,6 +17,7 @@ const { GET, PATCH } = await import("./route");
 
 const profile = {
   enabledPlatforms: ["vinted", "depop"],
+  preferredPlatform: "depop",
   allowance: { used: 4, limit: 20, resetsAt: "2026-09-01T00:00:00.000Z" },
 };
 
@@ -34,10 +37,18 @@ beforeEach(() => {
   resetAuthState();
   getProfile.mockReset();
   setEnabledPlatforms.mockReset();
+  setPreferredPlatform.mockReset();
   getProfile.mockResolvedValue(profile);
-  setEnabledPlatforms.mockImplementation(async (_t, _u, platforms) => ({
+  setEnabledPlatforms.mockImplementation(async (_t, _u, platforms, preferred) => ({
     ...profile,
     enabledPlatforms: platforms,
+    preferredPlatform: platforms.includes(preferred ?? profile.preferredPlatform)
+      ? (preferred ?? profile.preferredPlatform)
+      : platforms[0],
+  }));
+  setPreferredPlatform.mockImplementation(async (_t, _u, preferred) => ({
+    ...profile,
+    preferredPlatform: preferred,
   }));
 });
 
@@ -47,6 +58,7 @@ describe("GET /api/profile", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       enabled_platforms: ["vinted", "depop"],
+      preferred_platform: "depop",
       allowance: { used: 4, limit: 20, resets_at: "2026-09-01T00:00:00.000Z" },
     });
   });
@@ -68,15 +80,45 @@ describe("GET /api/profile", () => {
 });
 
 describe("PATCH /api/profile", () => {
-  it("updates the platform set", async () => {
+  it("updates the platform set and returns the whole profile", async () => {
     const res = await PATCH(patch({ enabled_platforms: ["vinted"] }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ enabled_platforms: ["vinted"] });
+    expect(await res.json()).toMatchObject({
+      enabled_platforms: ["vinted"],
+      preferred_platform: "vinted",
+    });
   });
 
   it("writes as the authenticated caller, for their own row", async () => {
     await PATCH(patch({ enabled_platforms: ["vinted"] }));
-    expect(setEnabledPlatforms).toHaveBeenCalledWith("test-access-token", "test-user-id", ["vinted"]);
+    expect(setEnabledPlatforms).toHaveBeenCalledWith(
+      "test-access-token", "test-user-id", ["vinted"], undefined
+    );
+  });
+
+  it("updates the preferred platform alone", async () => {
+    const res = await PATCH(patch({ preferred_platform: "vinted" }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ preferred_platform: "vinted" });
+    expect(setPreferredPlatform).toHaveBeenCalledWith("test-access-token", "test-user-id", "vinted");
+  });
+
+  it("400s on a preferred platform that is not enabled", async () => {
+    const res = await PATCH(patch({ preferred_platform: "ebay" }));
+    expect(res.status).toBe(400);
+    expect(setPreferredPlatform).not.toHaveBeenCalled();
+  });
+
+  it("accepts both fields in one request — disabling the preferred one and naming its replacement", async () => {
+    const res = await PATCH(patch({ enabled_platforms: ["vinted", "ebay"], preferred_platform: "ebay" }));
+    expect(res.status).toBe(200);
+    expect(setEnabledPlatforms).toHaveBeenCalledWith(
+      "test-access-token", "test-user-id", ["vinted", "ebay"], "ebay"
+    );
+  });
+
+  it("400s when neither field is sent", async () => {
+    expect((await PATCH(patch({}))).status).toBe(400);
   });
 
   it("401s without a bearer token", async () => {

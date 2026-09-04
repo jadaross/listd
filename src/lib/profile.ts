@@ -17,17 +17,21 @@ import type { AllowanceState } from "@/lib/allowance";
 
 export interface Profile {
   enabledPlatforms: Platform[];
+  /** Which Enabled Platform listings are written for first. Always one of `enabledPlatforms`. */
+  preferredPlatform: Platform;
   allowance: AllowanceState;
 }
 
 interface ProfileRow {
   enabled_platforms: Platform[];
+  preferred_platform: Platform;
   allowance_used: number;
   allowance_limit: number;
   allowance_period_start: string;
 }
 
-const SELECT = "enabled_platforms, allowance_used, allowance_limit, allowance_period_start";
+const SELECT =
+  "enabled_platforms, preferred_platform, allowance_used, allowance_limit, allowance_period_start";
 
 function toProfile(row: ProfileRow): Profile {
   const periodStart = new Date(row.allowance_period_start);
@@ -38,6 +42,7 @@ function toProfile(row: ProfileRow): Profile {
   );
   return {
     enabledPlatforms: row.enabled_platforms,
+    preferredPlatform: row.preferred_platform,
     allowance: {
       used: row.allowance_used,
       limit: row.allowance_limit,
@@ -89,15 +94,56 @@ export function validatePlatformSet(input: unknown): Platform[] {
 export async function setEnabledPlatforms(
   token: string,
   userId: string,
-  platforms: Platform[]
+  platforms: Platform[],
+  preferred?: Platform
 ): Promise<Profile> {
+  // The database refuses a preferred platform that is not enabled, so when the
+  // caller disables the one they prefer the preference has to move in the same
+  // statement. First enabled wins unless the caller named another.
+  const nextPreferred =
+    preferred && platforms.includes(preferred)
+      ? preferred
+      : (await getProfile(token)).preferredPlatform;
+  const update = {
+    enabled_platforms: platforms,
+    preferred_platform: platforms.includes(nextPreferred) ? nextPreferred : platforms[0],
+  };
+
   const { data, error } = await userClient(token)
     .from("profiles")
-    .update({ enabled_platforms: platforms })
+    .update(update)
     .eq("id", userId)
     .select(SELECT)
     .single();
 
   if (error) throw new Error(`Could not update enabled platforms: ${error.message}`);
+  return toProfile(data as ProfileRow);
+}
+
+export class InvalidPreferredPlatform extends Error {}
+
+export function validatePreferredPlatform(input: unknown, enabled: Platform[]): Platform {
+  if (typeof input !== "string" || !PLATFORM_IDS.includes(input as Platform)) {
+    throw new InvalidPreferredPlatform(`Unknown platform: ${String(input)}`);
+  }
+  if (!enabled.includes(input as Platform)) {
+    throw new InvalidPreferredPlatform(`${input} is not an enabled platform`);
+  }
+  return input as Platform;
+}
+
+export async function setPreferredPlatform(
+  token: string,
+  userId: string,
+  preferred: Platform
+): Promise<Profile> {
+  const { data, error } = await userClient(token)
+    .from("profiles")
+    .update({ preferred_platform: preferred })
+    .eq("id", userId)
+    .select(SELECT)
+    .single();
+
+  if (error) throw new Error(`Could not update preferred platform: ${error.message}`);
   return toProfile(data as ProfileRow);
 }

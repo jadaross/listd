@@ -43,7 +43,7 @@ struct PlatformsScreen: View {
         defer { saving = false }
         // Best effort: if the network is down the local choice still stands and
         // Settings can re-save it. Enabled Platforms are also re-read on launch.
-        _ = try? await state.api.setEnabledPlatforms(state.orderedEnabled)
+        await state.savePlatforms()
         state.onboardingComplete = true
         state.screen = .capture
     }

@@ -176,10 +176,24 @@ final class AppState {
 
     func loadProfile() async {
         guard let p = try? await api.profile() else { return }
+        apply(p)
+    }
+
+    /// The server's word on the profile wins over whatever the device thought.
+    func apply(_ p: ProfileResponse) {
         enabled = Set(p.enabledPlatforms)
+        preferred = p.preferredPlatform
         used = p.allowance.used
         allowance = p.allowance.limit
-        if !enabled.contains(preferred), let first = orderedEnabled.first { preferred = first }
+    }
+
+    func savePlatforms() async {
+        if let p = try? await api.setEnabledPlatforms(orderedEnabled, preferred: preferred) { apply(p) }
+    }
+
+    func savePreferred(_ platform: Platform) async {
+        preferred = platform
+        if let p = try? await api.setPreferredPlatform(platform) { apply(p) }
     }
 
     func signOut() async {

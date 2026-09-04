@@ -16,7 +16,11 @@ protocol SessionProviding: Sendable {
 /// previewed against a stub before the real one is wired.
 protocol BowerAPIClient: Sendable {
     func profile() async throws -> ProfileResponse
-    func setEnabledPlatforms(_ platforms: [Platform]) async throws -> [Platform]
+    /// Sends the preference alongside, because disabling the preferred platform
+    /// has to name its replacement in the same request — the database refuses
+    /// to let the two drift apart.
+    func setEnabledPlatforms(_ platforms: [Platform], preferred: Platform) async throws -> ProfileResponse
+    func setPreferredPlatform(_ platform: Platform) async throws -> ProfileResponse
     /// Photos in, Neutral Listing out. Streams, but assembles before returning —
     /// the wire format is a JSON document delivered in text fragments, so there
     /// is nothing structured to surface mid-flight.
@@ -123,11 +127,17 @@ struct BowerAPI: BowerAPIClient {
         try await send("/api/profile", as: ProfileResponse.self)
     }
 
-    func setEnabledPlatforms(_ platforms: [Platform]) async throws -> [Platform] {
-        struct Body: Encodable { let enabledPlatforms: [Platform] }
-        struct Reply: Decodable { let enabledPlatforms: [Platform] }
+    func setEnabledPlatforms(_ platforms: [Platform], preferred: Platform) async throws -> ProfileResponse {
+        struct Body: Encodable { let enabledPlatforms: [Platform]; let preferredPlatform: Platform }
         return try await send("/api/profile", method: "PATCH",
-                              body: Body(enabledPlatforms: platforms), as: Reply.self).enabledPlatforms
+                              body: Body(enabledPlatforms: platforms, preferredPlatform: preferred),
+                              as: ProfileResponse.self)
+    }
+
+    func setPreferredPlatform(_ platform: Platform) async throws -> ProfileResponse {
+        struct Body: Encodable { let preferredPlatform: Platform }
+        return try await send("/api/profile", method: "PATCH",
+                              body: Body(preferredPlatform: platform), as: ProfileResponse.self)
     }
 
     func valuate(item: ValuationItem) async throws -> ValuationResponse {

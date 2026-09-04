@@ -1,0 +1,8 @@
+schemaVersion: 1
+sessionDefaults:
+  projectPath: /Users/jada/Desktop/repos/bower/ios-app/bower/bower.xcodeproj
+  scheme: bower
+  configuration: Debug
+  simulatorName: iPhone 17 Pro
+  simulatorId: C1A88FB8-8E31-4761-9281-B75E9CEFA196
+  simulatorPlatform: iOS Simulator

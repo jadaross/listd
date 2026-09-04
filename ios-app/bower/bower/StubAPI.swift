@@ -21,13 +21,21 @@ struct StubAPI: BowerAPIClient {
         await wait()
         return ProfileResponse(
             enabledPlatforms: [.vinted, .depop, .ebay],
+            preferredPlatform: .depop,
             allowance: AllowanceState(used: 11, limit: 40, resetsAt: "2026-10-01T00:00:00Z")
         )
     }
 
-    func setEnabledPlatforms(_ platforms: [Platform]) async throws -> [Platform] {
+    func setEnabledPlatforms(_ platforms: [Platform], preferred: Platform) async throws -> ProfileResponse {
         await wait()
-        return platforms
+        return ProfileResponse(enabledPlatforms: platforms, preferredPlatform: preferred,
+                               allowance: AllowanceState(used: 11, limit: 40, resetsAt: nil))
+    }
+
+    func setPreferredPlatform(_ platform: Platform) async throws -> ProfileResponse {
+        await wait()
+        return ProfileResponse(enabledPlatforms: [.vinted, .depop, .ebay], preferredPlatform: platform,
+                               allowance: AllowanceState(used: 11, limit: 40, resetsAt: nil))
     }
 
     func analyse(images: [Data], tone: Tone, platform: Platform?) async throws -> AnalysisResult {

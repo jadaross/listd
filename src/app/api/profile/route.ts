@@ -2,28 +2,35 @@ import { withAuth } from "@/lib/auth";
 import {
   getProfile,
   InvalidPlatformSet,
+  InvalidPreferredPlatform,
   setEnabledPlatforms,
+  setPreferredPlatform,
   validatePlatformSet,
+  validatePreferredPlatform,
 } from "@/lib/profile";
+import type { Profile } from "@/lib/profile";
 
 export const runtime = "nodejs";
 
+function body(profile: Profile) {
+  return {
+    enabled_platforms: profile.enabledPlatforms,
+    preferred_platform: profile.preferredPlatform,
+    allowance: {
+      used: profile.allowance.used,
+      limit: profile.allowance.limit,
+      resets_at: profile.allowance.resetsAt,
+    },
+  };
+}
+
 /**
- * The caller's account: which Platforms they sell on, and where their
- * Allowance stands. This is what onboarding writes (#16) and what Settings
- * edits afterwards.
+ * The caller's Enabled Platforms, Preferred Platform, and Allowance. Read as
+ * the caller, so RLS scopes it to their own row.
  */
 export const GET = withAuth(async (_request, user) => {
   try {
-    const profile = await getProfile(user.token);
-    return Response.json({
-      enabled_platforms: profile.enabledPlatforms,
-      allowance: {
-        used: profile.allowance.used,
-        limit: profile.allowance.limit,
-        resets_at: profile.allowance.resetsAt,
-      },
-    });
+    return Response.json(body(await getProfile(user.token)));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return Response.json({ error: message }, { status: 500 });
@@ -32,30 +39,49 @@ export const GET = withAuth(async (_request, user) => {
 
 interface PatchBody {
   enabled_platforms?: unknown;
+  preferred_platform?: unknown;
 }
 
+/**
+ * Either field may be sent alone or together. Sending both is how a client
+ * disables the preferred platform and names its replacement in one request.
+ */
 export const PATCH = withAuth(async (request, user) => {
-  let body: PatchBody;
+  let patch: PatchBody;
   try {
-    body = await request.json();
+    patch = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  let platforms;
-  try {
-    platforms = validatePlatformSet(body.enabled_platforms);
-  } catch (err) {
-    if (err instanceof InvalidPlatformSet) {
-      return Response.json({ error: err.message }, { status: 400 });
-    }
-    throw err;
+  if (patch.enabled_platforms === undefined && patch.preferred_platform === undefined) {
+    return Response.json(
+      { error: "enabled_platforms or preferred_platform is required" },
+      { status: 400 }
+    );
   }
 
   try {
-    const profile = await setEnabledPlatforms(user.token, user.id, platforms);
-    return Response.json({ enabled_platforms: profile.enabledPlatforms });
+    let profile: Profile;
+
+    if (patch.enabled_platforms !== undefined) {
+      const platforms = validatePlatformSet(patch.enabled_platforms);
+      const preferred =
+        patch.preferred_platform !== undefined
+          ? validatePreferredPlatform(patch.preferred_platform, platforms)
+          : undefined;
+      profile = await setEnabledPlatforms(user.token, user.id, platforms, preferred);
+    } else {
+      const current = await getProfile(user.token);
+      const preferred = validatePreferredPlatform(patch.preferred_platform, current.enabledPlatforms);
+      profile = await setPreferredPlatform(user.token, user.id, preferred);
+    }
+
+    return Response.json(body(profile));
   } catch (err) {
+    if (err instanceof InvalidPlatformSet || err instanceof InvalidPreferredPlatform) {
+      return Response.json({ error: err.message }, { status: 400 });
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     return Response.json({ error: message }, { status: 500 });
   }

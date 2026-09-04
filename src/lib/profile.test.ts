@@ -21,6 +21,7 @@ const {
 
 const row = {
   enabled_platforms: ["vinted", "depop"],
+  preferred_platform: "depop",
   allowance_used: 4,
   allowance_limit: 20,
   allowance_period_start: "2026-08-01T00:00:00+00:00",
@@ -38,6 +39,7 @@ describe("getProfile", () => {
   it("returns the caller's platforms and meter", async () => {
     expect(await getProfile("token-abc")).toEqual({
       enabledPlatforms: ["vinted", "depop"],
+      preferredPlatform: "depop",
       allowance: { used: 4, limit: 20, resetsAt: "2026-09-01T00:00:00.000Z" },
     });
   });
@@ -102,9 +104,30 @@ describe("setEnabledPlatforms", () => {
     });
   });
 
-  it("writes only the platform set — the meter is not in the update", async () => {
+  it("writes the platform set and a valid preference — never the meter", async () => {
     await setEnabledPlatforms("t", "user-1", ["vinted"]);
-    expect(update).toHaveBeenCalledWith({ enabled_platforms: ["vinted"] });
+    // The stored preference was depop, which is no longer enabled, so the
+    // preference moves to the first enabled platform in the same statement.
+    expect(update).toHaveBeenCalledWith({
+      enabled_platforms: ["vinted"],
+      preferred_platform: "vinted",
+    });
+  });
+
+  it("keeps the stored preference when it is still enabled", async () => {
+    await setEnabledPlatforms("t", "user-1", ["vinted", "depop"]);
+    expect(update).toHaveBeenCalledWith({
+      enabled_platforms: ["vinted", "depop"],
+      preferred_platform: "depop",
+    });
+  });
+
+  it("takes a named preference when it is in the new set", async () => {
+    await setEnabledPlatforms("t", "user-1", ["vinted", "ebay"], "ebay");
+    expect(update).toHaveBeenCalledWith({
+      enabled_platforms: ["vinted", "ebay"],
+      preferred_platform: "ebay",
+    });
   });
 
   it("narrows the update to the caller's own row", async () => {

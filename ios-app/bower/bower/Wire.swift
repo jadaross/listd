@@ -175,5 +175,6 @@ struct ValuationItem: Codable, Sendable {
 
 struct ProfileResponse: Codable, Sendable {
     let enabledPlatforms: [Platform]
+    let preferredPlatform: Platform
     let allowance: AllowanceState
 }

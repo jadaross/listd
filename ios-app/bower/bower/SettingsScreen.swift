@@ -28,7 +28,7 @@ struct SettingsScreen: View {
                 BowerGroup {
                     ForEach(Array(state.orderedEnabled.enumerated()), id: \.element) { i, p in
                         if i > 0 { Hairline() }
-                        Button { state.preferred = p } label: {
+                        Button { Task { await state.savePreferred(p) } } label: {
                             HStack(spacing: 12) {
                                 Circle().fill(p.tint).frame(width: 10, height: 10)
                                 Text(p.name).font(BowerFont.ui(14.5)).foregroundStyle(theme.text)
@@ -96,7 +96,7 @@ struct SettingsScreen: View {
             BowerToggle(
                 isOn: Binding(get: { on }, set: { v in
                     if state.enable(p, v) {
-                        Task { _ = try? await state.api.setEnabledPlatforms(state.orderedEnabled) }
+                        Task { await state.savePlatforms() }
                     } else {
                         blocked = p
                         Task { try? await Task.sleep(for: .seconds(2.4)); if blocked == p { blocked = nil } }

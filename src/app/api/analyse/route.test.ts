@@ -7,6 +7,14 @@ import { readStringStream } from "@/lib/streaming-text";
 const analyseListingStream = vi.fn();
 vi.mock("@/lib/llm/analyse", () => ({ analyseListingStream }));
 
+const spendAllowance = vi.fn();
+const refundAllowance = vi.fn();
+vi.mock("@/lib/allowance", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/allowance")>()),
+  spendAllowance,
+  refundAllowance,
+}));
+
 const { authState, resetAuthState } = await import("@/test/auth-mock");
 const { POST } = await import("./route");
 
@@ -29,10 +37,60 @@ function streamOf(text: string): ReadableStream<string> {
   });
 }
 
+function failingStream(): ReadableStream<string> {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue("{");
+      controller.error(new Error("model fell over"));
+    },
+  });
+}
+
 beforeEach(() => {
   resetAuthState();
   analyseListingStream.mockReset();
   analyseListingStream.mockReturnValue(streamOf(JSON.stringify(analysisResult)));
+  spendAllowance.mockReset();
+  refundAllowance.mockReset();
+  spendAllowance.mockResolvedValue({ allowed: true, used: 3, limit: 40, resetsAt: "2026-10-01T00:00:00+00:00" });
+  refundAllowance.mockResolvedValue(undefined);
+});
+
+describe("POST /api/analyse — the meter", () => {
+  it("reserves one unit before the model is called", async () => {
+    await POST(post({ images: [PHOTO], tone: "casual" }));
+    expect(spendAllowance).toHaveBeenCalledWith("test-user-id");
+    expect(spendAllowance.mock.invocationCallOrder[0]).toBeLessThan(
+      analyseListingStream.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("402s with the meter's numbers when the Allowance is used up", async () => {
+    spendAllowance.mockResolvedValue({ allowed: false, used: 40, limit: 40, resetsAt: "2026-10-01T00:00:00+00:00" });
+    const res = await POST(post({ images: [PHOTO], tone: "casual" }));
+    expect(res.status).toBe(402);
+    expect(await res.json()).toMatchObject({ code: "allowance_exhausted", allowance: { used: 40, limit: 40 } });
+    expect(analyseListingStream).not.toHaveBeenCalled();
+  });
+
+  it("costs nothing when the request is invalid", async () => {
+    await POST(post({ images: [], tone: "casual" }));
+    await POST(post(null, "{"));
+    expect(spendAllowance).not.toHaveBeenCalled();
+  });
+
+  it("refunds the unit when the stream fails part-way", async () => {
+    analyseListingStream.mockReturnValue(failingStream());
+    const res = await POST(post({ images: [PHOTO], tone: "casual" }));
+    await expect(readStringStream(res)).rejects.toThrow();
+    expect(refundAllowance).toHaveBeenCalledWith("test-user-id");
+  });
+
+  it("does not refund a read that completed", async () => {
+    const res = await POST(post({ images: [PHOTO], tone: "casual" }));
+    await readStringStream(res);
+    expect(refundAllowance).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/analyse", () => {
