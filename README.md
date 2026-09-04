@@ -78,3 +78,7 @@ networking ([ADR-0001](./docs/adr/0001-ios-only-web-ui-removed.md)). The real
 app gets built beside them.
 
 Scout Mode — *"I'm in a shop, is this worth buying?"* — is deliberately v2.
+
+## Where it stands
+
+v1 is built on both sides and waiting on App Store Connect. See issue #33.

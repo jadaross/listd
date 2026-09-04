@@ -8,8 +8,9 @@ bower values a secondhand item from photographs and tells the user what to write
 where to post it, and what to ask for it.
 
 It is **an iOS app with a headless backend**. There is no web UI — the Next.js app
-exists purely for its API routes and its deployment story on Vercel. If you open this
-repo expecting pages, see `docs/adr/0002-headless-nextjs-api-on-vercel.md`.
+exists for its API routes and its deployment story on Vercel, plus one legal page
+(`/privacy`) that App Store Connect requires. If you open this repo expecting pages,
+see `docs/adr/0002-headless-nextjs-api-on-vercel.md`.
 
 Read `CONTEXT.md` for the domain vocabulary, `ARCHITECTURE.md` for the call flow and
 what each model call costs, and `docs/adr/` for why things are the way they are before
@@ -23,7 +24,14 @@ npm run build    # Production build + type-check
 npm run lint     # ESLint (flat config, eslint.config.mjs)
 ```
 
-No test suite exists yet. Type-checking is done via `npm run build`.
+```bash
+npm test         # Vitest — 222 tests across the backend
+```
+
+The iOS app lives in `ios-app/bower/` and builds with Xcode 26 against iOS 26.5.
+Prefer the XcodeBuildMCP tools; call `session_show_defaults` first. Launch with
+`-bowerStub` to run every screen on fixtures with no network and no sign-in — DEBUG
+only, the flag does not exist in Release.
 
 ## Environment
 
@@ -40,11 +48,12 @@ there are no anonymous requests, because the meter needs someone to meter
 
 | Route | Purpose |
 |---|---|
-| `POST /api/analyse` | Photos → `AnalysisResult` (photo quality scoring + tag OCR + Neutral Listing). Streams SSE. |
+| `POST /api/analyse` | Photos → `AnalysisResult` (photo quality scoring + tag OCR + Neutral Listing, including the search-free price guess). Streams SSE. **Spends one Allowance unit.** |
 | `POST /api/format`  | Neutral `Listing` + platform + tone → `PlatformListing`. |
-| `POST /api/refine`  | Existing `PlatformListing` + chip instructions → rewritten `PlatformListing`. |
-| `POST /api/valuate` | `ValuationItem` → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. |
-| `GET`/`PATCH /api/profile` | The caller's Enabled Platforms and Allowance. |
+| `POST /api/refine`  | Existing `PlatformListing` + chip instruction text → rewritten `PlatformListing`. |
+| `POST /api/valuate` | `ValuationItem` → a Price Band per Enabled Platform, plus a Recommendation. **Spends one Allowance unit.** |
+| `GET`/`PATCH /api/profile` | The caller's Enabled Platforms, Preferred Platform and Allowance. PATCH takes either or both. |
+| `DELETE /api/profile` | Deletes the caller's account. Required by App Review (5.1.1). |
 
 `/api/valuate` reads the Enabled Platforms from the caller's profile — never
 from the request body. A client that could name its own platforms could ask for
@@ -63,24 +72,34 @@ work it had not enabled.
 | `src/lib/allowance.ts` | The Allowance meter. Counting itself lives in SQL, not here |
 | `src/lib/profile.ts` | Enabled Platforms, read and written as the caller |
 | `supabase/migrations/*` | The schema, and the source of truth for it — never edit in the dashboard |
-| `ios/` | SwiftUI files — a **visual reference only**. Entirely mock-driven, no networking. See ADR-0001. |
+| `ios-app/bower/` | **The app.** Six screens, Supabase Auth (Apple only), the API client. Filesystem-synchronised, so a new `.swift` file joins the target on save. |
+| `ios-app/bower/bower/BowerAPI.swift` | The client, behind `BowerAPIClient`. `StubAPI` is the fixture implementation |
+| `ios-app/bower/bower/Wire.swift` | Codable mirrors of `types.ts` — keep in step. The wire's `Comparable` is `ComparableListing` here |
+| `ios-app/bower/Info.plist` | A *partial* plist merged with the generated one. Custom keys cannot travel via `INFOPLIST_KEY_*`; it sits outside the synced folder deliberately; changing `INFOPLIST_FILE` needs a clean build |
+| `ios/` | The **old** mock-driven SwiftUI reference. Superseded by `ios-app/`; kept for the design record. See ADR-0001. |
 
-### Not built yet
+### Where v1 stands
 
-The backend is complete for v1: identity, metering and the Valuation all exist
-and are covered by tests. What remains is the client.
+**Built, both sides.** Backend: five routes, auth, metering on reads and searches,
+the Valuation, account deletion, 222 tests. Client: six screens — sign in, platforms,
+capture, analysing, price-and-listing, settings — with real camera, real Supabase
+session, and every screen exercised in the simulator. Fonts, icon, usage strings,
+privacy manifest and export compliance are all in.
 
-1. **The Xcode project** — there is no `.xcodeproj` in the repo at all (#11)
-2. **Sign in with Apple** — needs Apple Developer portal configuration (#15)
-3. **The screens** — photograph an Item, valuation, format and copy (#12, #13, #14, #16)
+**Waiting on:** an App Store Connect record and the first archive (#33) — human
+steps in Xcode. The ladder above v1 is ordered in #29.
 
-Build the real app *beside* `ios/`, not on top of it: those files are mock-driven
-with a single-god-object state model that will not survive real async work.
+Two decisions that shape the client and are easy to undo by accident: sign-in is
+**Apple only** (a second method without account linking creates two accounts —
+#30), and `/api/analyse` streams a JSON *document* in text fragments, not events,
+so the client assembles then decodes and the loading screen shows no facts.
 
 ### Prompt design
 
 `analyse` returns a **single JSON object** covering three concerns in one pass: photo
-quality scoring, tag/label OCR (`tag_data`), and the Neutral Listing. `refine` accepts a
+quality scoring, tag/label OCR (`tag_data`), and the Neutral Listing — which carries
+the search-free price guess as `price_min`/`price_max`. That guess is never a Price
+Band; only `/api/valuate` produces those, and only with Comparables (ADR-0005). `refine` accepts a
 `PlatformListing` plus a list of natural-language refinements (one per chip the user
 tapped) and returns just the `PlatformListing`.
 
