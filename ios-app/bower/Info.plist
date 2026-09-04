@@ -11,5 +11,14 @@
 	<string>$(BOWER_SUPABASE_URL)</string>
 	<key>BowerSupabaseAnonKey</key>
 	<string>$(BOWER_SUPABASE_ANON_KEY)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>InstrumentSerif-Regular.ttf</string>
+		<string>InstrumentSerif-Italic.ttf</string>
+		<string>Geist.ttf</string>
+		<string>GeistMono.ttf</string>
+	</array>
 </dict>
 </plist>

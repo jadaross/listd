@@ -60,9 +60,9 @@ struct BowerTheme {
     }
 }
 
-/// Instrument Serif and Geist are not bundled yet — `Font.custom` falls back to
-/// the system face silently when a name is missing, which is the behaviour we
-/// want until the `.ttf` files are added. Shape and scale still read correctly.
+/// Bundled under Fonts/ and registered in Info.plist. Instrument Serif ships
+/// as two static faces; Geist and Geist Mono are variable fonts, addressed by
+/// family name so the weight axis responds to `.weight()`.
 enum BowerFont {
     static func serif(_ size: CGFloat) -> Font {
         .custom("InstrumentSerif-Italic", size: size)
@@ -73,11 +73,11 @@ enum BowerFont {
     }
 
     static func ui(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .custom("Geist-Regular", size: size).weight(weight)
+        .custom("Geist", size: size).weight(weight)
     }
 
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .custom("GeistMono-Regular", size: size).weight(weight)
+        .custom("Geist Mono", size: size).weight(weight)
     }
 }
 
