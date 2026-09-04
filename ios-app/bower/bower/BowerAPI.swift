@@ -1,0 +1,206 @@
+import Foundation
+
+/// Supplies the bearer token every route requires. Behind a protocol so the
+/// app builds and previews without the Supabase package, and so tests can run
+/// the client against a fixed token. See ADR-0007 — there are no anonymous
+/// requests, so this is never optional at the network layer.
+protocol SessionProviding: Sendable {
+    /// The current access token, or nil when nobody is signed in.
+    func accessToken() async -> String?
+    /// Refresh after a 401 carrying `expired_token`. Returns the new token.
+    @discardableResult func refresh() async throws -> String
+    func signOut() async
+}
+
+/// Every call the app can make. A protocol so screens can be built and
+/// previewed against a stub before the real one is wired.
+protocol BowerAPIClient: Sendable {
+    func profile() async throws -> ProfileResponse
+    func setEnabledPlatforms(_ platforms: [Platform]) async throws -> [Platform]
+    /// Photos in, Neutral Listing out. Streams, but assembles before returning —
+    /// the wire format is a JSON document delivered in text fragments, so there
+    /// is nothing structured to surface mid-flight.
+    func analyse(images: [Data], tone: Tone, platform: Platform?) async throws -> AnalysisResult
+    func valuate(item: ValuationItem) async throws -> ValuationResponse
+    func format(listing: NeutralListing, platform: Platform, tone: Tone) async throws -> PlatformListing
+    func refine(listing: PlatformListing, platform: Platform, instructions: [String]) async throws -> PlatformListing
+}
+
+// MARK: - Live
+
+struct BowerAPI: BowerAPIClient {
+    let baseURL: URL
+    let session: any SessionProviding
+    private let urlSession: URLSession
+
+    init(baseURL: URL = APIConfig.baseURL, session: any SessionProviding, urlSession: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+        self.urlSession = urlSession
+    }
+
+    private static let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.keyDecodingStrategy = .convertFromSnakeCase
+        return d
+    }()
+
+    private static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.keyEncodingStrategy = .convertToSnakeCase
+        return e
+    }()
+
+    // MARK: Requests
+
+    private func request(_ path: String, method: String = "GET", body: (any Encodable)? = nil) async throws -> URLRequest {
+        guard let token = await session.accessToken() else { throw APIError.notSignedIn }
+        var r = URLRequest(url: baseURL.appending(path: path))
+        r.httpMethod = method
+        r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let body {
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            r.httpBody = try Self.encoder.encode(body)
+        }
+        return r
+    }
+
+    /// Runs a request, and on an expired token refreshes once and runs it again.
+    /// Any other auth failure is terminal — a corrupt session should surface as
+    /// a sign-out, not as a retry loop.
+    private func send<T: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil, as: T.Type) async throws -> T {
+        do {
+            return try await perform(try await request(path, method: method, body: body), as: T.self)
+        } catch let error as APIError where error.isRecoverableBySignInRefresh {
+            _ = try await session.refresh()
+            return try await perform(try await request(path, method: method, body: body), as: T.self)
+        }
+    }
+
+    private func perform<T: Decodable>(_ req: URLRequest, as: T.Type) async throws -> T {
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await urlSession.data(for: req)
+        } catch {
+            throw APIError.transport(error)
+        }
+        try Self.check(response, data)
+        do {
+            return try Self.decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decoding(error)
+        }
+    }
+
+    /// Maps a non-2xx response onto the failure the client should react to.
+    private static func check(_ response: URLResponse, _ data: Data) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        guard !(200..<300).contains(http.statusCode) else { return }
+
+        let body = try? decoder.decode(APIErrorBody.self, from: data)
+
+        switch http.statusCode {
+        case 401:
+            switch body?.code {
+            case "expired_token":  throw APIError.sessionExpired
+            case "missing_token":  throw APIError.notSignedIn
+            default:               throw APIError.sessionInvalid
+            }
+        case 402:
+            throw APIError.allowanceExhausted(
+                body?.allowance ?? AllowanceState(used: 0, limit: 0, resetsAt: nil)
+            )
+        case 400:
+            throw APIError.badRequest(body?.error ?? "The request was rejected")
+        default:
+            throw APIError.server(status: http.statusCode, message: body?.error)
+        }
+    }
+
+    // MARK: Calls
+
+    func profile() async throws -> ProfileResponse {
+        try await send("/api/profile", as: ProfileResponse.self)
+    }
+
+    func setEnabledPlatforms(_ platforms: [Platform]) async throws -> [Platform] {
+        struct Body: Encodable { let enabledPlatforms: [Platform] }
+        struct Reply: Decodable { let enabledPlatforms: [Platform] }
+        return try await send("/api/profile", method: "PATCH",
+                              body: Body(enabledPlatforms: platforms), as: Reply.self).enabledPlatforms
+    }
+
+    func valuate(item: ValuationItem) async throws -> ValuationResponse {
+        struct Body: Encodable { let item: ValuationItem }
+        return try await send("/api/valuate", method: "POST", body: Body(item: item), as: ValuationResponse.self)
+    }
+
+    func format(listing: NeutralListing, platform: Platform, tone: Tone) async throws -> PlatformListing {
+        struct Body: Encodable { let listing: NeutralListing; let platform: Platform; let tone: Tone }
+        return try await send("/api/format", method: "POST",
+                              body: Body(listing: listing, platform: platform, tone: tone), as: PlatformListing.self)
+    }
+
+    func refine(listing: PlatformListing, platform: Platform, instructions: [String]) async throws -> PlatformListing {
+        struct Body: Encodable { let platform: Platform; let listing: PlatformListing; let instructions: [String] }
+        return try await send("/api/refine", method: "POST",
+                              body: Body(platform: platform, listing: listing, instructions: instructions),
+                              as: PlatformListing.self)
+    }
+
+    // MARK: analyse — the streaming one
+
+    func analyse(images: [Data], tone: Tone, platform: Platform?) async throws -> AnalysisResult {
+        struct Body: Encodable { let images: [String]; let tone: Tone; let platform: Platform? }
+        let body = Body(images: images.map { $0.base64EncodedString() }, tone: tone, platform: platform)
+
+        var req = try await request("/api/analyse", method: "POST", body: body)
+        req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        // The model call runs long; the default 60s is not enough.
+        req.timeoutInterval = 120
+
+        let assembled = try await readStringStream(req)
+        guard let data = assembled.data(using: .utf8) else {
+            throw APIError.decoding(URLError(.cannotDecodeContentData))
+        }
+        do {
+            return try Self.decoder.decode(AnalysisResult.self, from: data)
+        } catch {
+            throw APIError.decoding(error)
+        }
+    }
+
+    /// The wire format is defined once, in `src/lib/streaming-text.ts`: each
+    /// frame is `data: ` followed by a JSON-encoded *string* fragment, and a
+    /// `[DONE]` sentinel closes the stream. Fragments are concatenated into one
+    /// document — there are no structured events to surface as they arrive.
+    /// Malformed frames are skipped, matching the reference consumer.
+    private func readStringStream(_ req: URLRequest) async throws -> String {
+        let (bytes, response): (URLSession.AsyncBytes, URLResponse)
+        do {
+            (bytes, response) = try await urlSession.bytes(for: req)
+        } catch {
+            throw APIError.transport(error)
+        }
+
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            var collected = Data()
+            for try await byte in bytes { collected.append(byte) }
+            try Self.check(response, collected)
+        }
+
+        var assembled = ""
+        do {
+            for try await line in bytes.lines {
+                guard line.hasPrefix("data: ") else { continue }
+                let payload = String(line.dropFirst(6))
+                if payload == "[DONE]" { return assembled }
+                guard let fragment = try? Self.decoder.decode(String.self, from: Data(payload.utf8)) else { continue }
+                assembled += fragment
+            }
+        } catch {
+            throw APIError.transport(error)
+        }
+        return assembled
+    }
+}

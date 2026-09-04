@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged into the generated Info.plist. Custom keys cannot travel via
+	     INFOPLIST_KEY_* build settings — Xcode only forwards keys it knows,
+	     and drops anything else without warning. -->
+	<key>BowerAPIBaseURL</key>
+	<string>$(BOWER_API_BASE_URL)</string>
+</dict>
+</plist>
