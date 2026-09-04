@@ -7,5 +7,9 @@
 	     and drops anything else without warning. -->
 	<key>BowerAPIBaseURL</key>
 	<string>$(BOWER_API_BASE_URL)</string>
+	<key>BowerSupabaseURL</key>
+	<string>$(BOWER_SUPABASE_URL)</string>
+	<key>BowerSupabaseAnonKey</key>
+	<string>$(BOWER_SUPABASE_ANON_KEY)</string>
 </dict>
 </plist>

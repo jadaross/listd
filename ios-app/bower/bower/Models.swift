@@ -127,7 +127,46 @@ enum Screen: String, Hashable {
 
 @Observable
 final class AppState {
+    let session: SupabaseSession
+    let api: any BowerAPIClient
+
     var screen: Screen = .signin
+
+    /// Whether the first-run platforms screen has been completed on this
+    /// device. Local, not server-side: the profile row exists from sign-up
+    /// with all three platforms enabled, so the server cannot tell "never
+    /// asked" from "chose all three". Good enough for v1.
+    var onboardingComplete: Bool {
+        get { UserDefaults.standard.bool(forKey: "onboardingComplete") }
+        set { UserDefaults.standard.set(newValue, forKey: "onboardingComplete") }
+    }
+
+    init(session: SupabaseSession, api: any BowerAPIClient) {
+        self.session = session
+        self.api = api
+        screen = session.hasSession ? (onboardingComplete ? .capture : .platforms) : .signin
+    }
+
+    /// After sign-in: pull the profile so Enabled Platforms and the allowance
+    /// are the server's truth, then route past onboarding if it is done.
+    func didSignIn() async {
+        await loadProfile()
+        screen = onboardingComplete ? .capture : .platforms
+    }
+
+    func loadProfile() async {
+        guard let p = try? await api.profile() else { return }
+        enabled = Set(p.enabledPlatforms)
+        used = p.allowance.used
+        allowance = p.allowance.limit
+        if !enabled.contains(preferred), let first = orderedEnabled.first { preferred = first }
+    }
+
+    func signOut() async {
+        await session.signOut()
+        photos = []
+        screen = .signin
+    }
 
     /// Enabled Platforms. Read from the profile server-side — never sent by the
     /// client on a valuation request. See ARCHITECTURE.md.

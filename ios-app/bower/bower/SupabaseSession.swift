@@ -1,0 +1,67 @@
+import Foundation
+import Auth
+import CryptoKit
+
+/// The real session, backed by Supabase Auth. Sessions persist in the keychain
+/// and refresh themselves; `accessToken()` returns a token that is valid right
+/// now, or nil when nobody is signed in.
+final class SupabaseSession: SessionProviding, @unchecked Sendable {
+    let client: AuthClient
+
+    init() {
+        client = AuthClient(
+            url: APIConfig.supabaseURL,
+            headers: [
+                "apikey": APIConfig.supabaseAnonKey,
+                "Authorization": "Bearer \(APIConfig.supabaseAnonKey)",
+            ],
+            localStorage: AuthClient.Configuration.defaultLocalStorage,
+            autoRefreshToken: true
+        )
+    }
+
+    /// Whether a session exists at all — may be expired. Used to decide which
+    /// screen to open on launch without a network round-trip.
+    var hasSession: Bool { client.currentSession != nil }
+
+    func accessToken() async -> String? {
+        // `session` refreshes if it can. If it cannot, the session is gone and
+        // nil is the honest answer — the caller routes to sign-in.
+        (try? await client.session)?.accessToken
+    }
+
+    @discardableResult
+    func refresh() async throws -> String {
+        try await client.refreshSession().accessToken
+    }
+
+    func signOut() async {
+        try? await client.signOut()
+    }
+
+    // MARK: Sign in with Apple
+
+    /// Apple embeds the SHA-256 of the nonce in the id token; Supabase checks
+    /// it against the raw nonce we send. Generating it here keeps the pairing
+    /// in one place.
+    struct AppleNonce {
+        let raw: String
+        let hashed: String
+
+        init() {
+            var bytes = [UInt8](repeating: 0, count: 32)
+            _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+            raw = bytes.map { String(format: "%02x", $0) }.joined()
+            hashed = SHA256.hash(data: Data(raw.utf8)).map { String(format: "%02x", $0) }.joined()
+        }
+    }
+
+    func signInWithApple(identityToken: Data, nonce: AppleNonce) async throws {
+        guard let idToken = String(data: identityToken, encoding: .utf8) else {
+            throw APIError.sessionInvalid
+        }
+        _ = try await client.signInWithIdToken(
+            credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken, nonce: nonce.raw)
+        )
+    }
+}

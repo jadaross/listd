@@ -1,20 +1,17 @@
 import SwiftUI
 import AuthenticationServices
 
+/// Apple only for v1. Email/password was designed and is the first ladder
+/// rung, but shipping both without account linking lets one person become
+/// two accounts with two allowances — see issue #30. One method, no collision.
 struct SignInScreen: View {
     @Environment(AppState.self) private var state
     @Environment(\.bower) private var theme
     @Environment(\.colorScheme) private var scheme
 
-    @State private var email = ""
-    @State private var password = ""
+    @State private var nonce = SupabaseSession.AppleNonce()
     @State private var working = false
-    @State private var rejected = false
-
-    /// Remembered so a returning user is led to the method they actually use.
-    /// Also the cheap guard against signing in a second way and quietly ending
-    /// up with two accounts — see issue #30.
-    @AppStorage("lastSignInMethod") private var lastMethod = "apple"
+    @State private var failure: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,88 +36,40 @@ struct SignInScreen: View {
 
             Spacer(minLength: 28)
 
-            VStack(spacing: 10) {
-                appleButton
-                divider
-                field("Email", text: $email, secure: false)
-                field("Password", text: $password, secure: true)
-                if rejected { rejection }
+            VStack(spacing: 12) {
+                if let failure { rejection(failure) }
 
-                BowerButton(title: working ? "Signing in…" : "Sign in", disabled: working) {
-                    signInWithEmail()
+                SignInWithAppleButton(.signIn) { request in
+                    nonce = SupabaseSession.AppleNonce()
+                    request.requestedScopes = [.email]
+                    request.nonce = nonce.hashed
+                } onCompletion: { result in
+                    Task { await complete(result) }
+                }
+                .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .disabled(working)
+                .overlay {
+                    if working {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.black.opacity(0.35))
+                            .overlay { ProgressView().tint(.white) }
+                    }
                 }
 
-                HStack(spacing: 4) {
-                    Text("New here?").foregroundStyle(theme.muted)
-                    Button("Create an account") { finish(via: "email") }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(theme.satin)
-                        .fontWeight(.medium)
-                }
-                .font(BowerFont.ui(13))
-                .padding(.top, 2)
+                Text("Photos are read and thrown away. Bower keeps no listings, no history and no images.")
+                    .font(BowerFont.ui(11.5))
+                    .foregroundStyle(theme.muted)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 2)
             }
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 34)
     }
 
-    private var appleButton: some View {
-        SignInWithAppleButton(.signIn) { request in
-            request.requestedScopes = [.fullName, .email]
-        } onCompletion: { _ in
-            finish(via: "apple")
-        }
-        .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
-        .frame(height: 50)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(alignment: .topTrailing) {
-            if lastMethod == "apple" {
-                Text("You used this last time")
-                    .font(BowerFont.mono(9.5, weight: .bold))
-                    .tracking(0.6)
-                    .foregroundStyle(theme.ink)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(theme.pollen)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-                    .offset(x: -10, y: -9)
-            }
-        }
-    }
-
-    private var divider: some View {
-        HStack(spacing: 10) {
-            Hairline()
-            Kicker("or")
-            Hairline()
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func field(_ placeholder: String, text: Binding<String>, secure: Bool) -> some View {
-        Group {
-            if secure {
-                SecureField(placeholder, text: text)
-            } else {
-                TextField(placeholder, text: text)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-            }
-        }
-        .textFieldStyle(.plain)
-        .font(BowerFont.ui(15))
-        .padding(.vertical, 13)
-        .padding(.horizontal, 14)
-        .background(theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(rejected ? theme.coral : theme.line, lineWidth: 1)
-        )
-    }
-
-    private var rejection: some View {
+    private func rejection(_ message: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text("!")
                 .font(BowerFont.ui(11, weight: .bold))
@@ -128,32 +77,38 @@ struct SignInScreen: View {
                 .frame(width: 16, height: 16)
                 .background(theme.coral)
                 .clipShape(Circle())
-            Text(rejectionText).font(BowerFont.ui(12.5))
+            Text(message)
+                .font(BowerFont.ui(12.5))
+                .foregroundStyle(theme.text)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .background(theme.coral.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private var rejectionText: AttributedString {
-        var lead = AttributedString("That password doesn't match this email. ")
-        lead.foregroundColor = theme.text
-        var tail = AttributedString("The account exists — try again or reset it.")
-        tail.foregroundColor = theme.muted
-        return lead + tail
-    }
-
-    private func signInWithEmail() {
-        guard password.count >= 4 else { rejected = true; return }
-        rejected = false
-        working = true
-        finish(via: "email")
-    }
-
-    private func finish(via method: String) {
-        lastMethod = method
-        working = false
-        state.screen = .platforms
+    private func complete(_ result: Result<ASAuthorization, any Error>) async {
+        switch result {
+        case .failure(let error):
+            // The user dismissing Apple's sheet is not a failure worth a message.
+            if let e = error as? ASAuthorizationError, e.code == .canceled { return }
+            failure = "Apple didn't complete the sign-in. Try again."
+        case .success(let auth):
+            guard let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                  let token = credential.identityToken else {
+                failure = "Apple returned an unexpected credential. Try again."
+                return
+            }
+            working = true
+            defer { working = false }
+            do {
+                try await state.session.signInWithApple(identityToken: token, nonce: nonce)
+                failure = nil
+                await state.didSignIn()
+            } catch {
+                failure = "Couldn't finish signing in. Check your connection and try again."
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ struct PlatformsScreen: View {
     @Environment(\.bower) private var theme
 
     @State private var blocked: Platform?
+    @State private var saving = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -28,13 +29,23 @@ struct PlatformsScreen: View {
 
             Spacer(minLength: 20)
 
-            BowerButton(title: "Continue with \(countLabel)") {
-                state.screen = .capture
+            BowerButton(title: saving ? "Saving…" : "Continue with \(countLabel)", disabled: saving) {
+                Task { await save() }
             }
         }
         .padding(.horizontal, 22)
         .padding(.top, 10)
         .padding(.bottom, 34)
+    }
+
+    private func save() async {
+        saving = true
+        defer { saving = false }
+        // Best effort: if the network is down the local choice still stands and
+        // Settings can re-save it. Enabled Platforms are also re-read on launch.
+        _ = try? await state.api.setEnabledPlatforms(state.orderedEnabled)
+        state.onboardingComplete = true
+        state.screen = .capture
     }
 
     private var countLabel: String {
