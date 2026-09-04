@@ -12,8 +12,13 @@ vi.mock("@/lib/profile", async (importOriginal) => ({
   setPreferredPlatform,
 }));
 
+const deleteUser = vi.fn();
+vi.mock("@/lib/supabase", () => ({
+  serviceClient: () => ({ auth: { admin: { deleteUser } } }),
+}));
+
 const { authState, resetAuthState } = await import("@/test/auth-mock");
-const { GET, PATCH } = await import("./route");
+const { GET, PATCH, DELETE } = await import("./route");
 
 const profile = {
   enabledPlatforms: ["vinted", "depop"],
@@ -35,6 +40,8 @@ function patch(body: unknown, raw?: string) {
 
 beforeEach(() => {
   resetAuthState();
+  deleteUser.mockReset();
+  deleteUser.mockResolvedValue({ data: {}, error: null });
   getProfile.mockReset();
   setEnabledPlatforms.mockReset();
   setPreferredPlatform.mockReset();
@@ -156,5 +163,28 @@ describe("PATCH /api/profile", () => {
   it("500s when the write is refused", async () => {
     setEnabledPlatforms.mockRejectedValue(new Error("permission denied"));
     expect((await PATCH(patch({ enabled_platforms: ["vinted"] }))).status).toBe(500);
+  });
+});
+
+describe("DELETE /api/profile", () => {
+  function del() {
+    return new Request("http://localhost/api/profile", { method: "DELETE" });
+  }
+
+  it("deletes the caller's own auth user, by the id from the verified token", async () => {
+    const res = await DELETE(del());
+    expect(res.status).toBe(204);
+    expect(deleteUser).toHaveBeenCalledWith("test-user-id");
+  });
+
+  it("401s without a bearer token, and deletes nothing", async () => {
+    authState.userId = null;
+    expect((await DELETE(del())).status).toBe(401);
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("500s when the auth admin call fails", async () => {
+    deleteUser.mockResolvedValue({ data: null, error: { message: "nope" } });
+    expect((await DELETE(del())).status).toBe(500);
   });
 });

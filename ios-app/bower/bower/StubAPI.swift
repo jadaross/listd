@@ -67,6 +67,8 @@ struct StubAPI: BowerAPIClient {
         )
     }
 
+    func deleteAccount() async throws { await wait() }
+
     func valuate(item: ValuationItem) async throws -> ValuationResponse {
         try await Task.sleep(for: .seconds(3))
         func band(_ lo: Double, _ hi: Double, _ n: Int, _ p: Platform) -> PriceBand {

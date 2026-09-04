@@ -28,6 +28,8 @@ protocol BowerAPIClient: Sendable {
     func valuate(item: ValuationItem) async throws -> ValuationResponse
     func format(listing: NeutralListing, platform: Platform, tone: Tone) async throws -> PlatformListing
     func refine(listing: PlatformListing, platform: Platform, instructions: [String]) async throws -> PlatformListing
+    /// Deletes the account. Required by App Review for any app with sign-up.
+    func deleteAccount() async throws
 }
 
 // MARK: - Live
@@ -138,6 +140,13 @@ struct BowerAPI: BowerAPIClient {
         struct Body: Encodable { let preferredPlatform: Platform }
         return try await send("/api/profile", method: "PATCH",
                               body: Body(preferredPlatform: platform), as: ProfileResponse.self)
+    }
+
+    func deleteAccount() async throws {
+        let req = try await request("/api/profile", method: "DELETE")
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await urlSession.data(for: req) } catch { throw APIError.transport(error) }
+        try Self.check(response, data)
     }
 
     func valuate(item: ValuationItem) async throws -> ValuationResponse {

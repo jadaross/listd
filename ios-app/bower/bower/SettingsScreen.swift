@@ -8,6 +8,9 @@ struct SettingsScreen: View {
     @State private var blocked: Platform?
     @State private var email: String?
     @State private var signingOut = false
+    @State private var confirmDelete = false
+    @State private var deleting = false
+    @State private var deleteFailed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -66,6 +69,33 @@ struct SettingsScreen: View {
                 .font(BowerFont.ui(11.5)).foregroundStyle(theme.muted)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
+
+            Button { confirmDelete = true } label: {
+                Text(deleting ? "Deleting…" : "Delete account")
+                    .font(BowerFont.ui(12.5, weight: .medium))
+                    .foregroundStyle(theme.muted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+            .disabled(deleting)
+            if deleteFailed {
+                Text("Couldn't delete the account. Check your connection and try again.")
+                    .font(BowerFont.ui(11.5)).foregroundStyle(theme.coral)
+                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
+            }
+        }
+        .confirmationDialog("Delete your account?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete account", role: .destructive) {
+                deleting = true
+                Task {
+                    do { try await state.deleteAccount() } catch { deleteFailed = true }
+                    deleting = false
+                }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("This removes your sign-in and your remaining allowance. There is nothing else to remove — bower keeps no photos or listings.")
         }
         .padding(.horizontal, 22)
         .padding(.top, 4)

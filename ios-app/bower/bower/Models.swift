@@ -196,6 +196,14 @@ final class AppState {
         if let p = try? await api.setPreferredPlatform(platform) { apply(p) }
     }
 
+    func deleteAccount() async throws {
+        try await api.deleteAccount()
+        await session.signOut()
+        onboardingComplete = false
+        photos = []; analysis = nil
+        screen = .signin
+    }
+
     func signOut() async {
         await session.signOut()
         photos = []

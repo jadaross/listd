@@ -1,4 +1,5 @@
 import { withAuth } from "@/lib/auth";
+import { serviceClient } from "@/lib/supabase";
 import {
   getProfile,
   InvalidPlatformSet,
@@ -85,4 +86,19 @@ export const PATCH = withAuth(async (request, user) => {
     const message = err instanceof Error ? err.message : "Unknown error";
     return Response.json({ error: message }, { status: 500 });
   }
+});
+
+/**
+ * Deletes the caller's account. Required by App Review for any app with
+ * account creation (5.1.1). The auth user goes through the service role —
+ * nothing else can delete from auth.users — and the profile row follows by
+ * cascade. Only ever the authenticated caller's own id: it comes from the
+ * verified token, never from the request.
+ */
+export const DELETE = withAuth(async (_request, user) => {
+  const { error } = await serviceClient().auth.admin.deleteUser(user.id);
+  if (error) {
+    return Response.json({ error: `Could not delete account: ${error.message}` }, { status: 500 });
+  }
+  return new Response(null, { status: 204 });
 });
