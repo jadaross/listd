@@ -9,8 +9,12 @@ final class SupabaseSession: SessionProviding, @unchecked Sendable {
     let client: AuthClient
 
     init() {
+        // AuthClient wants the auth service's own path, not the project root —
+        // the umbrella SupabaseClient appends this itself. Without it every
+        // request goes to /token at the project root, which the gateway does
+        // not route, and the SDK reports it as a connection failure.
         client = AuthClient(
-            url: APIConfig.supabaseURL,
+            url: APIConfig.supabaseURL.appending(path: "auth/v1"),
             headers: [
                 "apikey": APIConfig.supabaseAnonKey,
                 "Authorization": "Bearer \(APIConfig.supabaseAnonKey)",
