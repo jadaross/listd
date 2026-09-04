@@ -142,15 +142,8 @@ struct RootView: View {
         case .platforms: PlatformsScreen()
         case .capture:   CaptureScreen()
         case .analysing: AnalysingScreen()
-        default:
-            VStack(spacing: 12) {
-                Arch(size: 64)
-                Text("\(screen.rawValue) — not built yet")
-                    .font(BowerFont.ui(14))
-                    .foregroundStyle(theme.muted)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 80)
+        case .listing:   ListingScreen()
+        case .settings:  SettingsScreen()
         }
     }
 }

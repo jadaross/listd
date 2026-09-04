@@ -58,6 +58,22 @@ enum RefinementChip: String, CaseIterable, Identifiable {
         case .vintage:      "More vintage feel"
         }
     }
+
+    /// What actually goes over the wire — /api/refine takes natural-language
+    /// instructions, and nothing server-side translates ids. Verbatim from
+    /// chip-vocab.ts.
+    var instruction: String {
+        switch self {
+        case .shorter:      "Rewrite shorter — cut to the essentials, drop filler."
+        case .longer:       "Add more useful detail without padding or repetition."
+        case .casual:       "Make it more casual and conversational — natural, friendly, not corporate."
+        case .serious:      "Tone down the emojis and fashion-speak; keep it plain and honest."
+        case .measurements: "Add a measurements section: chest 23\", length 26\", sleeve 25\" (only if not already present)."
+        case .hashtags:     "Expand the hashtags/keywords array with relevant search terms (no duplicates)."
+        case .condition:    "Stress the condition: be explicit that there are no rips, stains, smells, or repairs, and that the lining is intact."
+        case .vintage:      "Lean into the vintage angle — mention era (90s/2000s) and broken-in character."
+        }
+    }
 }
 
 enum Tone: String, CaseIterable, Codable {
