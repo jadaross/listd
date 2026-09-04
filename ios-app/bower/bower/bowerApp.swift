@@ -1,17 +1,14 @@
-//
-//  bowerApp.swift
-//  bower
-//
-//  Created by Jada on 31/08/2026.
-//
-
 import SwiftUI
 
 @main
 struct bowerApp: App {
+    @State private var state = AppState()
+    @Environment(\.colorScheme) private var scheme
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(state)
         }
     }
 }
