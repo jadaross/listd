@@ -136,7 +136,7 @@ struct Recommendation: Codable, Sendable {
     let runnersUp: [RunnerUp]
 }
 
-struct AllowanceState: Codable, Sendable {
+struct AllowanceState: Codable, Sendable, Equatable {
     let used: Int
     let limit: Int
     let resetsAt: String?

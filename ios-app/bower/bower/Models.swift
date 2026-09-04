@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Platform
 
@@ -74,9 +75,12 @@ enum Tone: String, CaseIterable, Codable {
 
 struct CapturedPhoto: Identifiable, Equatable {
     let id = UUID()
-    var label: String
+    let image: UIImage
+    /// JPEG, already downscaled — what actually goes over the wire.
+    let data: Data
     var shot: SuggestedShot?
-    var hue: Double
+
+    static func == (a: CapturedPhoto, b: CapturedPhoto) -> Bool { a.id == b.id }
 }
 
 /// Suggestions, never slots. The user may ignore every one of them.
@@ -177,6 +181,9 @@ final class AppState {
 
     var photos: [CapturedPhoto] = []
 
+    /// What the last read produced. Cleared with the photos on a new item.
+    var analysis: AnalysisResult?
+
     /// The Allowance meter. A read costs one; a search costs one.
     var used: Int = 0
     var allowance: Int = 40
@@ -198,6 +205,7 @@ final class AppState {
 
     func newItem() {
         photos = []
+        analysis = nil
         screen = .capture
     }
 }

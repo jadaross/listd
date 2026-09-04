@@ -81,10 +81,14 @@ struct RootView: View {
         ZStack {
             theme.bg.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                nav
-                ScrollView { body(for: state.screen) }
-                    .scrollBounceBehavior(.basedOnSize)
+            if state.screen == .analysing {
+                AnalysingScreen()
+            } else {
+                VStack(spacing: 0) {
+                    nav
+                    ScrollView { body(for: state.screen) }
+                        .scrollBounceBehavior(.basedOnSize)
+                }
             }
         }
         .environment(\.bower, theme)
@@ -136,6 +140,8 @@ struct RootView: View {
         switch screen {
         case .signin:    SignInScreen()
         case .platforms: PlatformsScreen()
+        case .capture:   CaptureScreen()
+        case .analysing: AnalysingScreen()
         default:
             VStack(spacing: 12) {
                 Arch(size: 64)
