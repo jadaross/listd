@@ -88,43 +88,30 @@ Format **only the platform being shown** — never fan out across all three. See
 
 ## Theme
 
-Warm direction, carried over to iOS: `--bg #f6f2eb`, `--card #fff`, `--text #1c1a16`,
-`--muted #86807a`, `--subtle #efebe3`, `--accent #3b5cff`. Fonts: **Instrument Serif**
-for the `bower.` wordmark and expressive headlines, **Geist** for everything else.
+Carried over from the Claude Design prototype (`Bower iOS Prototype.html`).
 
-## Wayfinding operations
+**Light** — bg `#FBF7EF`, card `#FFFDF8`, subtle `#F1EADC`, line `#E5DECE`, text `#1B1A20`, muted `#86807A`.
+**Dark** — bg `#131521`, card `#1C1F30`, subtle `#232739`, line `#2E3348`, text `#F2EEE6`, muted `#8D93A8`.
 
-The tracker is **GitHub Issues on `jadaross/bower`**. Both native sub-issues and
-native issue dependencies are enabled, so the frontier renders in GitHub's own UI.
+The accent palette is shared by both themes:
 
-| Concept | How it is expressed |
-|---|---|
-| The map | One issue labelled `wayfinder:map` |
-| A ticket | A **sub-issue** of the map, labelled `wayfinder:grilling` / `:prototype` / `:research` / `:task` |
-| Claiming | Assign to `jadaross` — an open, unassigned ticket is unclaimed |
-| Blocking | Native issue dependencies, not body text |
-| The frontier | Open sub-issues of the map that are unassigned and have no open blocker |
+| Name | Hex | Carries |
+|---|---|---|
+| satin | `#2B3AA8` | The primary — buttons, links, selection |
+| sheen | `#7BA9E8` | Progress and fills on dark grounds |
+| shell | `#DCE3F0` | Pale blue ground |
+| coral | `#E1563C` | The wordmark's full stop, errors, the "guess" marker |
+| pollen | `#E8B547` | The dot in the mark, warnings, the allowance ceiling |
+| moss | `#3F6B4A` | Confirmed, copied, evidence ticks |
+| avenue | `#171A2E` | Full-bleed dark screens — analysing, failure |
 
-Both dependency APIs take a **numeric issue id, not the issue number**, and it must
-be sent with `-F` (typed) rather than `-f` (string) — between them, the two
-easiest things to get wrong here.
+Fonts: **Instrument Serif**, *italic*, for the wordmark and expressive headlines;
+**Geist** for UI; **Geist Mono** for kickers, counters and numerics.
 
-```bash
-# id for a given issue number
-gh api repos/jadaross/bower/issues/<number> --jq .id
+The mark is **the arch** — a bower, drawn as a stroked arch with a pollen dot at its
+centre. The wordmark is `bower` in italic serif with a coral full stop. The accent
+moved from `#3b5cff` to the deeper `#2B3AA8`, so the bowerbird-prizes-blue reasoning
+behind the name still holds.
 
-# attach a ticket to the map
-gh api -X POST repos/jadaross/bower/issues/<map>/sub_issues -F sub_issue_id=<id>
-
-# B is blocked by A
-gh api -X POST repos/jadaross/bower/issues/<B>/dependencies/blocked_by -F issue_id=<id-of-A>
-
-# the frontier
-gh issue list --label wayfinder:grilling --label wayfinder:research \
-              --label wayfinder:prototype --label wayfinder:task \
-              --state open --search "no:assignee"
-```
-
-Implementation issues (`ready-for-agent`, `ready-for-human`) are a **separate
-population** from decision tickets. A wayfinder ticket asks a question; an
-implementation issue builds a thing. Do not mix the labels on one issue.
+Two things the app says in its own voice, and should keep saying: copy confirmations
+read **"In the bower"**, and the analyse action is **"Have a squiz"**.
