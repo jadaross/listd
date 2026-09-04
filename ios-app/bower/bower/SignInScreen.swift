@@ -88,6 +88,14 @@ struct SignInScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
+    private static func describe(_ error: APIError) -> String {
+        switch error {
+        case .transport(let e): "Couldn't reach the server: \(e.localizedDescription)"
+        case .sessionInvalid:   "Apple returned a credential Supabase rejected. Try again."
+        default:                "Couldn't finish signing in. Try again."
+        }
+    }
+
     private func complete(_ result: Result<ASAuthorization, any Error>) async {
         switch result {
         case .failure(let error):
@@ -106,8 +114,12 @@ struct SignInScreen: View {
                 try await state.session.signInWithApple(identityToken: token, nonce: nonce)
                 failure = nil
                 await state.didSignIn()
+            } catch let error as APIError {
+                failure = Self.describe(error)
             } catch {
-                failure = "Couldn't finish signing in. Check your connection and try again."
+                // Surface the SDK's own words. A masked error is how the first
+                // TestFlight build's routing bug hid behind "check your connection".
+                failure = "Couldn't finish signing in: \(error.localizedDescription)"
             }
         }
     }
