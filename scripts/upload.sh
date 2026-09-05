@@ -9,7 +9,27 @@
 #
 # With "Enable automatic distribution" on the TestFlight group, the build
 # reaches testers the moment it finishes processing — usually minutes.
+#
+# Headless uploads: the export step needs App Store Connect access, and the
+# Apple ID Xcode is signed into only works from an interactive session with a
+# live keychain. Set these and the upload authenticates with an App Store
+# Connect API key instead, so it runs from anywhere:
+#
+#   ASC_KEY_ID        the key's ID, e.g. AB12CD34EF
+#   ASC_ISSUER_ID     the issuer UUID shown on the Integrations page
+#   ASC_KEY_PATH      path to AuthKey_<KEY_ID>.p8 (default: ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8)
+#
+# Make one at App Store Connect → Users and Access → Integrations → Team Keys,
+# role "App Manager". The .p8 downloads once; keep it outside the repo.
 set -euo pipefail
+
+AUTH=()
+if [[ -n "${ASC_KEY_ID:-}" && -n "${ASC_ISSUER_ID:-}" ]]; then
+  KEY_PATH="${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8}"
+  [[ -f "$KEY_PATH" ]] || { echo "ASC_KEY_ID is set but $KEY_PATH does not exist" >&2; exit 1; }
+  AUTH=(-authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+  echo "authenticating with App Store Connect key $ASC_KEY_ID"
+fi
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/ios-app/bower"
 
 PBX=bower.xcodeproj/project.pbxproj
@@ -23,14 +43,14 @@ xcodebuild archive \
   -project bower.xcodeproj -scheme bower -configuration Release \
   -destination "generic/platform=iOS" \
   -archivePath "$OUT/bower.xcarchive" \
-  -allowProvisioningUpdates -quiet
+  -allowProvisioningUpdates ${AUTH[@]+"${AUTH[@]}"} -quiet
 echo "archived"
 
 xcodebuild -exportArchive \
   -archivePath "$OUT/bower.xcarchive" \
   -exportOptionsPlist ExportOptions.plist \
   -exportPath "$OUT/export" \
-  -allowProvisioningUpdates -quiet
+  -allowProvisioningUpdates ${AUTH[@]+"${AUTH[@]}"} -quiet
 echo "uploaded build $NEXT — App Store Connect is processing it"
 
 cd ../..
