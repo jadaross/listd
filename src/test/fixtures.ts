@@ -27,15 +27,6 @@ export const platformListing: PlatformListing = {
 };
 
 export const analysisResult: AnalysisResult = {
-  photo_analysis: {
-    scores: [
-      { index: 0, shot_type: "front", quality_score: 8, issues: [], is_usable: true },
-    ],
-    missing_shots: ["tag"],
-    suggestions: ["Add a tag photo"],
-    has_tag_photo: false,
-    ready_to_list: true,
-  },
   tag_data: {
     brand: "Carhartt",
     size: "M",

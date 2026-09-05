@@ -75,6 +75,13 @@ final class ListingModel {
         guard listing == nil, let a = state.analysis else { return }
         listing = a.listing
         platform = state.preferred
+        // The read was asked for the Preferred Platform and, when it came back
+        // with that platform's form fields, it already wrote the listing in
+        // that voice. Show it as it is — a second call would only rewrite it.
+        if a.listing.fields != nil {
+            formatted[platform] = a.listing.asPlatformListing
+            return
+        }
         await format()
     }
 
@@ -173,7 +180,7 @@ final class ListingModel {
     var fullText: String {
         guard let c = current else { return "" }
         var s = c.title + "\n\n" + c.description
-        if !c.hashtags.isEmpty { s += "\n\n" + c.hashtags.map { "#" + $0 }.joined(separator: " ") }
+        if !c.hashtags.isEmpty { s += "\n\n" + c.displayHashtags.joined(separator: " ") }
         return s
     }
 }
@@ -195,16 +202,10 @@ private struct ItemSummary: View {
             }
 
             Button { withAnimation(.easeOut(duration: 0.2)) { open.toggle() } } label: {
-                FlowLayout(spacing: 6) {
-                    chip(listing.colourPrimary)
-                    chip(listing.condition.rawValue)
-                    chip(listing.size)
-                    chip(listing.material)
-                    Text(open ? "Close" : "Not right?")
-                        .font(BowerFont.ui(12, weight: .semibold))
-                        .foregroundStyle(theme.satin)
-                        .padding(.vertical, 4).padding(.horizontal, 4)
-                }
+                Text(open ? "Close" : "Not right?")
+                    .font(BowerFont.ui(12, weight: .semibold))
+                    .foregroundStyle(theme.satin)
+                    .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
 
@@ -228,15 +229,6 @@ private struct ItemSummary: View {
             }
         }
         .padding(.horizontal, 22)
-    }
-
-    private func chip(_ text: String) -> some View {
-        Text(text)
-            .font(BowerFont.ui(12))
-            .foregroundStyle(theme.text)
-            .padding(.vertical, 4).padding(.horizontal, 9)
-            .background(theme.subtle)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private func field(_ label: String, _ value: Binding<String>, evidence: String? = nil) -> some View {
@@ -541,11 +533,11 @@ private struct ListingSection: View {
                             HStack {
                                 Kicker(model.platform == .depop ? "Hashtags" : "Keywords")
                                 Spacer()
-                                CopyButton(text: c.hashtags.map { "#" + $0 }.joined(separator: " "))
+                                CopyButton(text: c.displayHashtags.joined(separator: " "))
                             }
                             FlowLayout(spacing: 6) {
-                                ForEach(c.hashtags, id: \.self) { t in
-                                    Text("#" + t).font(BowerFont.mono(11.5)).foregroundStyle(theme.text)
+                                ForEach(c.displayHashtags, id: \.self) { t in
+                                    Text(t).font(BowerFont.mono(11.5)).foregroundStyle(theme.text)
                                         .padding(.vertical, 4).padding(.horizontal, 8)
                                         .background(theme.subtle).clipShape(RoundedRectangle(cornerRadius: 6))
                                 }
@@ -556,11 +548,14 @@ private struct ListingSection: View {
                         Hairline()
                         VStack(alignment: .leading, spacing: 6) {
                             Kicker("Their form fields")
+                            // Each value copies on its own: the platform's
+                            // form takes them one dropdown at a time.
                             ForEach(fields) { f in
-                                HStack(alignment: .top) {
+                                HStack(alignment: .top, spacing: 10) {
                                     Text(f.label).font(BowerFont.ui(12.5)).foregroundStyle(theme.muted)
                                     Spacer()
                                     Text(f.value).font(BowerFont.ui(12.5, weight: .medium)).foregroundStyle(theme.text).multilineTextAlignment(.trailing)
+                                    CopyButton(text: f.value)
                                 }
                                 .padding(.vertical, 6)
                                 Hairline()

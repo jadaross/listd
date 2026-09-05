@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// One mark, one word. The arch fills while the photos are read. There is no
-/// percentage: the stream delivers opaque fragments, so any number would be
-/// invented, and an invented number is worse than none.
+/// One mark, one word, and then the title. The arch fills while the photos
+/// are read; the item's title appears the moment the stream has written it,
+/// well before the description and price. There is still no percentage: the
+/// fragments are opaque, so any number would be invented.
 struct AnalysingScreen: View {
     @Environment(AppState.self) private var state
     @Environment(\.bower) private var theme
@@ -11,6 +12,7 @@ struct AnalysingScreen: View {
 
     @State private var phase: Phase = .reading
     @State private var fill: CGFloat = 0
+    @State private var title: String?
     @State private var task: Task<Void, Never>?
 
     var body: some View {
@@ -32,15 +34,27 @@ struct AnalysingScreen: View {
         VStack(spacing: 26) {
             ArchFill(progress: fill, stroke: .white, fillColor: theme.sheen, dot: theme.pollen)
                 .frame(width: 190, height: 190)
-            Text("Squizzing")
-                .font(BowerFont.serif(40))
-                .foregroundStyle(.white)
+            VStack(spacing: 14) {
+                Text("Squizzing")
+                    .font(BowerFont.serif(40))
+                    .foregroundStyle(.white)
+                if let title {
+                    Text(title)
+                        .font(BowerFont.ui(15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 290)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+            }
         }
         .padding(30)
+        .animation(.easeOut(duration: 0.3), value: title)
     }
 
     private func start() {
         phase = .reading
+        title = nil
         // Ease toward nearly full over the typical read, then snap on arrival.
         fill = 0
         withAnimation(.easeOut(duration: 9)) { fill = 0.88 }
@@ -50,7 +64,8 @@ struct AnalysingScreen: View {
                 let result = try await state.api.analyse(
                     images: state.photos.map(\.data),
                     tone: .casual,
-                    platform: state.preferred
+                    platform: state.preferred,
+                    onTitle: { t in Task { @MainActor in title = t } }
                 )
                 guard !Task.isCancelled else { return }
                 state.analysis = result

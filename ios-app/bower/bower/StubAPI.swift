@@ -38,15 +38,12 @@ struct StubAPI: BowerAPIClient {
                                allowance: AllowanceState(used: 11, limit: 40, resetsAt: nil))
     }
 
-    func analyse(images: [Data], tone: Tone, platform: Platform?) async throws -> AnalysisResult {
-        try await Task.sleep(for: .seconds(2))
+    func analyse(images: [Data], tone: Tone, platform: Platform?,
+                 onTitle: @escaping @Sendable (String) -> Void) async throws -> AnalysisResult {
+        try await Task.sleep(for: .seconds(1))
+        onTitle("Carhartt Detroit Jacket — Hamilton Brown, Size M")
+        try await Task.sleep(for: .seconds(1))
         return AnalysisResult(
-            photoAnalysis: PhotoAnalysis(
-                scores: images.indices.map {
-                    PhotoScore(index: $0, shotType: "front", qualityScore: 0.86, issues: [], isUsable: true)
-                },
-                missingShots: [], suggestions: [], hasTagPhoto: true, readyToList: true
-            ),
             tagData: TagData(
                 brand: "Carhartt", size: "M", sizeSystem: "US",
                 fabricComposition: "100% cotton duck", countryOfManufacture: "Mexico",
@@ -62,7 +59,16 @@ struct StubAPI: BowerAPIClient {
                 hashtags: ["carhartt", "workwear", "detroitjacket"],
                 priceMin: 18, priceMax: 26,
                 priceReasoning: "Judged from the photos alone — no live listings were checked.",
-                gender: "men", mainCategory: "Coats & jackets", subcategory: "Workwear"
+                gender: "men", mainCategory: "Coats & jackets", subcategory: "Workwear",
+                fields: platform == nil ? nil : [
+                    ListingField(label: "Category", value: "Men > Clothing > Outerwear > Coats & jackets", hint: nil),
+                    ListingField(label: "Brand", value: "Carhartt", hint: nil),
+                    ListingField(label: "Size", value: "M", hint: nil),
+                    ListingField(label: "Condition", value: "Good", hint: nil),
+                    ListingField(label: "Colour", value: "Brown", hint: nil),
+                    ListingField(label: "Material", value: "Cotton", hint: nil),
+                    ListingField(label: "Parcel size", value: "Large", hint: nil),
+                ]
             )
         )
     }

@@ -18,6 +18,9 @@ const TONE_HINT: Record<Tone, string> = {
 
 function buildPrompt({ listing, platform, tone }: FormatInput): string {
   const spec = platformListingSpec[platform];
+  // A listing that came from analyse may carry the Preferred Platform's form
+  // fields. They are not source material for another platform's form.
+  const { fields: _fields, ...source } = listing;
   return `You are a secondhand fashion listing specialist. Reformat the following clothing listing for ${platformMetadata[platform].name}.
 
 ${spec.promptFragment}
@@ -25,7 +28,7 @@ ${spec.promptFragment}
 ${TONE_HINT[tone]}
 
 Source listing (neutral format):
-${JSON.stringify(listing, null, 2)}
+${JSON.stringify(source, null, 2)}
 
 Return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON:
 

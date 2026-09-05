@@ -29,12 +29,29 @@ describe("analyseListing — prompt", () => {
     expect(content.at(-1).type).toBe("text");
   });
 
-  it("asks for all three sections in one pass", async () => {
+  it("asks for the tag read and the listing in one pass, and nothing else", async () => {
     await analyseListing({ photos: [PHOTO], tone: "casual" });
     const prompt = lastCall().messages[0].content.at(-1).text as string;
-    expect(prompt).toContain("photo_analysis");
     expect(prompt).toContain("tag_data");
     expect(prompt).toContain("listing");
+    // Nothing displays photo scores; asking for them only delays the title.
+    expect(prompt).not.toContain("photo_analysis");
+  });
+
+  it("puts tag_data before the listing so the title streams early", async () => {
+    await analyseListing({ photos: [PHOTO], tone: "casual" });
+    const prompt = lastCall().messages[0].content.at(-1).text as string;
+    expect(prompt.indexOf('"tag_data"')).toBeLessThan(prompt.indexOf('"listing"'));
+  });
+
+  it("asks for the platform's form fields only when a platform is supplied", async () => {
+    const { platformListingSpec } = await import("@/platforms");
+    await analyseListing({ photos: [PHOTO], tone: "casual" });
+    expect(lastCall().messages[0].content.at(-1).text).not.toContain('"fields"');
+    await analyseListing({ photos: [PHOTO], tone: "casual", platform: "vinted" });
+    const prompt = lastCall().messages[0].content.at(-1).text as string;
+    expect(prompt).toContain('"fields"');
+    expect(prompt).toContain(platformListingSpec.vinted.fieldsSchema);
   });
 
   it("builds a different prompt when a platform is supplied", async () => {

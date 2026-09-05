@@ -1,22 +1,6 @@
 export type Platform = "vinted" | "depop" | "ebay";
 export type Tone = "casual" | "professional";
 
-export interface PhotoScore {
-  index: number;
-  shot_type: string;
-  quality_score: number;
-  issues: string[];
-  is_usable: boolean;
-}
-
-export interface PhotoAnalysis {
-  scores: PhotoScore[];
-  missing_shots: string[];
-  suggestions: string[];
-  has_tag_photo: boolean;
-  ready_to_list: boolean;
-}
-
 export interface TagData {
   brand: string | null;
   size: string | null;
@@ -49,6 +33,11 @@ export interface Listing {
   gender?: "women" | "men" | "kids" | "unisex";
   main_category?: string;
   subcategory?: string;
+  /**
+   * Present only when analyse was asked for a platform: the dropdown values
+   * for that platform's form, so the first listing needs no format call.
+   */
+  fields?: ListingField[];
 }
 
 /**
@@ -72,8 +61,13 @@ export interface PlatformListing {
   fields?: ListingField[];
 }
 
+/**
+ * The read. `tag_data` comes first in the document because reading the labels
+ * before writing the listing is what grounds brand, size and fabric — and it
+ * is short, so the title still arrives early in the stream. There is no photo
+ * quality section: nothing displayed it, and it cost a third of the output.
+ */
 export interface AnalysisResult {
-  photo_analysis: PhotoAnalysis;
   tag_data: TagData;
   listing: Listing;
 }

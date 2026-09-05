@@ -21,10 +21,13 @@ protocol BowerAPIClient: Sendable {
     /// to let the two drift apart.
     func setEnabledPlatforms(_ platforms: [Platform], preferred: Platform) async throws -> ProfileResponse
     func setPreferredPlatform(_ platform: Platform) async throws -> ProfileResponse
-    /// Photos in, Neutral Listing out. Streams, but assembles before returning —
-    /// the wire format is a JSON document delivered in text fragments, so there
-    /// is nothing structured to surface mid-flight.
-    func analyse(images: [Data], tone: Tone, platform: Platform?) async throws -> AnalysisResult
+    /// Photos in, Neutral Listing out. Streams, and assembles before returning —
+    /// the wire format is a JSON document delivered in text fragments. One fact
+    /// is surfaced mid-flight: the title, called back the moment it is complete
+    /// in the buffer, so the user sees what the read made of the item while
+    /// the description is still being written.
+    func analyse(images: [Data], tone: Tone, platform: Platform?,
+                 onTitle: @escaping @Sendable (String) -> Void) async throws -> AnalysisResult
     func valuate(item: ValuationItem) async throws -> ValuationResponse
     func format(listing: NeutralListing, platform: Platform, tone: Tone) async throws -> PlatformListing
     func refine(listing: PlatformListing, platform: Platform, instructions: [String]) async throws -> PlatformListing
@@ -169,7 +172,8 @@ struct BowerAPI: BowerAPIClient {
 
     // MARK: analyse — the streaming one
 
-    func analyse(images: [Data], tone: Tone, platform: Platform?) async throws -> AnalysisResult {
+    func analyse(images: [Data], tone: Tone, platform: Platform?,
+                 onTitle: @escaping @Sendable (String) -> Void) async throws -> AnalysisResult {
         struct Body: Encodable { let images: [String]; let tone: Tone; let platform: Platform? }
         let body = Body(images: images.map { $0.base64EncodedString() }, tone: tone, platform: platform)
 
@@ -178,7 +182,7 @@ struct BowerAPI: BowerAPIClient {
         // The model call runs long; the default 60s is not enough.
         req.timeoutInterval = 120
 
-        let assembled = try await readStringStream(req)
+        let assembled = try await readStringStream(req, onTitle: onTitle)
         guard let data = assembled.data(using: .utf8) else {
             throw APIError.decoding(URLError(.cannotDecodeContentData))
         }
@@ -192,9 +196,12 @@ struct BowerAPI: BowerAPIClient {
     /// The wire format is defined once, in `src/lib/streaming-text.ts`: each
     /// frame is `data: ` followed by a JSON-encoded *string* fragment, and a
     /// `[DONE]` sentinel closes the stream. Fragments are concatenated into one
-    /// document — there are no structured events to surface as they arrive.
-    /// Malformed frames are skipped, matching the reference consumer.
-    private func readStringStream(_ req: URLRequest) async throws -> String {
+    /// document — there are no structured events. The one thing read early is
+    /// the listing title, found by pattern in the growing buffer as soon as its
+    /// closing quote has arrived. Malformed frames are skipped, matching the
+    /// reference consumer.
+    private func readStringStream(_ req: URLRequest,
+                                  onTitle: (@Sendable (String) -> Void)? = nil) async throws -> String {
         let (bytes, response): (URLSession.AsyncBytes, URLResponse)
         do {
             (bytes, response) = try await urlSession.bytes(for: req)
@@ -209,6 +216,7 @@ struct BowerAPI: BowerAPIClient {
         }
 
         var assembled = ""
+        var titleSeen = false
         do {
             for try await line in bytes.lines {
                 guard line.hasPrefix("data: ") else { continue }
@@ -216,10 +224,24 @@ struct BowerAPI: BowerAPIClient {
                 if payload == "[DONE]" { return assembled }
                 guard let fragment = try? Self.decoder.decode(String.self, from: Data(payload.utf8)) else { continue }
                 assembled += fragment
+                if !titleSeen, let onTitle, let title = Self.earlyTitle(in: assembled) {
+                    titleSeen = true
+                    onTitle(title)
+                }
             }
         } catch {
             throw APIError.transport(error)
         }
         return assembled
+    }
+
+    /// The first complete `"title": "…"` in a partial JSON document, unescaped.
+    /// Nil until the closing quote has streamed in.
+    static func earlyTitle(in buffer: String) -> String? {
+        guard let match = buffer.firstMatch(of: /"title"\s*:\s*("(?:[^"\\]|\\.)*")/) else { return nil }
+        let quoted = String(match.1)
+        guard let title = try? decoder.decode(String.self, from: Data(quoted.utf8)) else { return nil }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

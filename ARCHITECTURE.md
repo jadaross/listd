@@ -12,15 +12,16 @@ flowchart TD
     User([iOS app]) -->|bearer token| Auth{withAuth}
     Auth -->|401| Reject([Rejected])
 
-    Auth -->|photos + tone| Analyse["POST /api/analyse<br/>SONNET 5 · 1 call<br/>streams SSE<br/>spends 1 Allowance unit"]
-    Analyse --> Neutral["photo scores<br/>tag_data<br/>Neutral Listing<br/>+ the price guess"]
+    Auth -->|photos + tone + Preferred Platform| Analyse["POST /api/analyse<br/>SONNET 5 · 1 call<br/>streams SSE, title first<br/>spends 1 Allowance unit"]
+    Analyse --> Neutral["tag_data<br/>Neutral Listing in the platform's voice<br/>+ the price guess<br/>+ that platform's form fields"]
 
     Neutral -->|"user taps 'get a real price'"| Valuate["POST /api/valuate<br/>spends 1 Allowance unit"]
     Valuate --> Profile[("profile.enabled_platforms<br/>read as the caller, never from the body")]
     Profile --> Bands["SONNET 5 + web_search<br/>1 call per Enabled Platform<br/>run in parallel, cached per item+platform"]
     Bands --> Recommend["recommend()<br/>pure function — no LLM<br/>Price Band x sell-likelihood, net of fees"]
 
-    Recommend -->|recommended platform| Format["POST /api/format<br/>HAIKU 4.5 · 1 call<br/>only the platform being shown"]
+    Neutral -->|shown as it is| Listing
+    Neutral -->|user switches platform or tone| Format["POST /api/format<br/>HAIKU 4.5 · 1 call<br/>only the platform being shown"]
     Format --> Listing[Platform-formatted Listing]
 
     Listing -->|user taps Refinement Chips| Refine["POST /api/refine<br/>HAIKU 4.5 · 1 call per round"]
@@ -38,9 +39,9 @@ flowchart TD
 
 | Route | Purpose | LLM |
 |---|---|---|
-| `POST /api/analyse` | Photos → photo quality scores, tag OCR, Neutral Listing with a price guess. One JSON object. Streams SSE. Spends one unit. | Sonnet 5 × 1 |
+| `POST /api/analyse` | Photos → tag OCR, Neutral Listing with a price guess, and the named platform's form fields. One JSON object, title early. Streams SSE. Spends one unit. | Sonnet 5 × 1 |
 | `POST /api/valuate` | `ValuationItem` → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. | Sonnet 5 × *n* platforms |
-| `POST /api/format` | Neutral Listing + platform + tone → a Platform-formatted Listing | Haiku 4.5 × 1 |
+| `POST /api/format` | Neutral Listing + platform + tone → a Platform-formatted Listing. Only on a platform or tone switch — the first listing comes from `analyse`. | Haiku 4.5 × 1 |
 | `POST /api/refine` | Platform-formatted Listing + Refinement Chips → a rewritten one | Haiku 4.5 × 1 |
 | `GET` / `PATCH /api/profile` | Enabled Platforms, Preferred Platform, Allowance | none |
 | `DELETE /api/profile` | The caller's account, via the service role; profile cascades | none |
@@ -60,9 +61,13 @@ Set in one place, `src/lib/llm/client.ts`:
 
 | | Calls |
 |---|---|
-| One Enabled Platform | **3** — analyse, one Price Band, one format |
-| Three Enabled Platforms | **5** — analyse, three Price Bands, one format |
+| One Enabled Platform | **2** — analyse, one Price Band |
+| Three Enabled Platforms | **4** — analyse, three Price Bands |
+| Each platform or tone switch | +1 Haiku call (format) |
 | Each Refinement Chip round | +1 Haiku call |
+
+Before the listing screen the user waits on exactly one model call. The title is
+shown while that call is still streaming.
 
 Only Enabled Platforms are valued, so cost scales with what each user actually
 sells on. Price Bands are cached per item+platform, and `format` runs for the
@@ -107,7 +112,7 @@ behind `BowerAPIClient` so screens build against `StubAPI` fixtures.
 Two facts about the wire the client is shaped around. `/api/analyse` streams a
 JSON *document* in text fragments — `streaming-text.ts` defines the format and
 `BowerAPI.readStringStream` mirrors its reference consumer — so the client
-assembles then decodes, and the loading screen deliberately shows no facts as
-they arrive. And 401s are not interchangeable: `auth.ts` distinguishes expired
+assembles then decodes. The one fact surfaced mid-stream is the title, matched by
+pattern in the growing buffer; the JSON is ordered so it arrives early. And 401s are not interchangeable: `auth.ts` distinguishes expired
 from rejected tokens so the client can refresh silently on one and sign out on
 the other, and `APIError` keeps them apart.

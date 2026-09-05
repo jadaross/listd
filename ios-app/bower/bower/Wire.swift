@@ -1,7 +1,7 @@
 import Foundation
 
 // Codable mirrors of `src/lib/types.ts`. The backend mixes conventions —
-// `photo_analysis` is snake_case, `perPlatform` is camelCase — but snake_case
+// `tag_data` is snake_case, `perPlatform` is camelCase — but snake_case
 // conversion handles both, because a key with no underscores passes through
 // unchanged. Keep this file in step with types.ts.
 
@@ -17,22 +17,6 @@ enum Confidence: String, Codable, Sendable {
 }
 
 // MARK: - analyse
-
-struct PhotoScore: Codable, Sendable {
-    let index: Int
-    let shotType: String
-    let qualityScore: Double
-    let issues: [String]
-    let isUsable: Bool
-}
-
-struct PhotoAnalysis: Codable, Sendable {
-    let scores: [PhotoScore]
-    let missingShots: [String]
-    let suggestions: [String]
-    let hasTagPhoto: Bool
-    let readyToList: Bool
-}
 
 struct TagData: Codable, Sendable {
     let brand: String?
@@ -67,10 +51,21 @@ struct NeutralListing: Codable, Sendable {
     var gender: String?
     var mainCategory: String?
     var subcategory: String?
+    /// Present when the read was asked for a platform: that platform's form
+    /// fields, so the first listing shows without a format call.
+    var fields: [ListingField]?
+
+    /// The listing as the read already wrote it for one platform. Title,
+    /// description and hashtags are in that platform's voice when a platform
+    /// was named, so nothing needs rewriting before it is shown.
+    var asPlatformListing: PlatformListing {
+        PlatformListing(title: title, description: description, hashtags: hashtags, fields: fields)
+    }
 }
 
+/// The read: the tag OCR pass, then the listing. No photo scores — nothing
+/// showed them, and asking for them delayed the title.
 struct AnalysisResult: Codable, Sendable {
-    let photoAnalysis: PhotoAnalysis
     let tagData: TagData
     let listing: NeutralListing
 }
@@ -90,6 +85,12 @@ struct PlatformListing: Codable, Sendable {
     var description: String
     var hashtags: [String]
     var fields: [ListingField]?
+
+    /// Hashtags with exactly one leading `#`. Depop's come from the model
+    /// already prefixed; the neutral ones do not. Display and copy from here.
+    var displayHashtags: [String] {
+        hashtags.map { "#" + $0.drop(while: { $0 == "#" }) }
+    }
 }
 
 // MARK: - valuate

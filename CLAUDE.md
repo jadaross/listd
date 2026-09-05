@@ -48,7 +48,7 @@ there are no anonymous requests, because the meter needs someone to meter
 
 | Route | Purpose |
 |---|---|
-| `POST /api/analyse` | Photos → `AnalysisResult` (photo quality scoring + tag OCR + Neutral Listing, including the search-free price guess). Streams SSE. **Spends one Allowance unit.** |
+| `POST /api/analyse` | Photos → `AnalysisResult` (tag OCR + Neutral Listing, including the search-free price guess, plus the named platform's form fields). Streams SSE. **Spends one Allowance unit.** |
 | `POST /api/format`  | Neutral `Listing` + platform + tone → `PlatformListing`. |
 | `POST /api/refine`  | Existing `PlatformListing` + chip instruction text → rewritten `PlatformListing`. |
 | `POST /api/valuate` | `ValuationItem` → a Price Band per Enabled Platform, plus a Recommendation. **Spends one Allowance unit.** |
@@ -92,16 +92,23 @@ steps in Xcode. The ladder above v1 is ordered in #29.
 Two decisions that shape the client and are easy to undo by accident: sign-in is
 **Apple only** (a second method without account linking creates two accounts —
 #30), and `/api/analyse` streams a JSON *document* in text fragments, not events,
-so the client assembles then decodes and the loading screen shows no facts.
+so the client assembles then decodes. The one fact shown mid-stream is the title,
+pattern-matched out of the buffer the moment its closing quote arrives.
 
 ### Prompt design
 
-`analyse` returns a **single JSON object** covering three concerns in one pass: photo
-quality scoring, tag/label OCR (`tag_data`), and the Neutral Listing — which carries
-the search-free price guess as `price_min`/`price_max`. That guess is never a Price
-Band; only `/api/valuate` produces those, and only with Comparables (ADR-0005). `refine` accepts a
-`PlatformListing` plus a list of natural-language refinements (one per chip the user
-tapped) and returns just the `PlatformListing`.
+`analyse` returns a **single JSON object** in stream order: tag/label OCR (`tag_data`)
+first, because reading the labels grounds the listing and it is short, then the
+Neutral Listing — which carries the search-free price guess as `price_min`/`price_max`.
+That guess is never a Price Band; only `/api/valuate` produces those, and only with
+Comparables (ADR-0005). There is deliberately no photo-quality section: nothing
+displayed it and it delayed the title by a third of the output.
+
+The client asks `analyse` for the **Preferred Platform**, so the listing comes back
+in that voice with that platform's `fields`, and the first listing shows with no
+`format` call. `format` runs only when the user switches platform or tone. `refine`
+accepts a `PlatformListing` plus a list of natural-language refinements (one per chip
+the user tapped) and returns just the `PlatformListing`.
 
 Format **only the platform being shown** — never fan out across all three. See ADR-0004.
 

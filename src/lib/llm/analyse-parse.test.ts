@@ -44,11 +44,6 @@ describe("parseAnalysisResult", () => {
     expect(() => parseAnalysisResult(JSON.stringify(rest))).toThrow(/missing required/);
   });
 
-  it("throws when photo_analysis is missing", () => {
-    const { photo_analysis: _omitted, ...rest } = analysisResult;
-    expect(() => parseAnalysisResult(JSON.stringify(rest))).toThrow(/missing required/);
-  });
-
   it("throws when tag_data is missing", () => {
     const { tag_data: _omitted, ...rest } = analysisResult;
     expect(() => parseAnalysisResult(JSON.stringify(rest))).toThrow(/missing required/);

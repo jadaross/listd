@@ -1,5 +1,5 @@
 import type { AnalysisResult, Platform, Tone } from "@/lib/types";
-import { platformListingSpec } from "@/platforms";
+import { platformListingSpec, platformMetadata } from "@/platforms";
 import { MODELS, anthropicClient } from "./client";
 import { parseAnalysisResult } from "./analyse-parse";
 export { parseAnalysisResult };
@@ -19,23 +19,21 @@ const TONE_HINT: Record<Tone, string> = {
     "The description should be clean, factual, and professional. Lead with the most important details. No slang. Focus on measurements, condition, fabric, and fit. Concise.",
 };
 
-function jsonShape(): string {
+/**
+ * The document the model writes, in the order it streams. Tag data first —
+ * it is the OCR pass that grounds the listing — then the listing with the
+ * title early, so the client can show it while the description is still
+ * being written. When a platform is named, the listing also carries that
+ * platform's form fields, and the first listing needs no format call.
+ */
+function jsonShape(platform?: Platform): string {
+  const fields = platform
+    ? `,
+    "fields": [
+      { "label": "", "value": "", "hint": "" }
+    ]`
+    : "";
   return `{
-  "photo_analysis": {
-    "scores": [
-      {
-        "index": 0,
-        "shot_type": "front view",
-        "quality_score": 4,
-        "issues": [],
-        "is_usable": true
-      }
-    ],
-    "missing_shots": [],
-    "suggestions": [],
-    "has_tag_photo": false,
-    "ready_to_list": true
-  },
   "tag_data": {
     "brand": null,
     "size": null,
@@ -63,19 +61,12 @@ function jsonShape(): string {
     "price_reasoning": "",
     "gender": "women",
     "main_category": "tops",
-    "subcategory": ""
+    "subcategory": ""${fields}
   }
 }`;
 }
 
 const COMMON_RULES = `Rules:
-
-PHOTO ANALYSIS:
-- shot_type options: "front view" | "back view" | "tag/label" | "detail shot" | "defect" | "measurement" | "styled/on-body" | "flat lay" | "unknown"
-- quality_score: 5=excellent (sharp, well-lit, clean background, full item), 4=good, 3=acceptable, 2=poor (suggest retake), 1=unusable
-- Check missing_shots against: front view, back view, care label/tag, detail shot, defect (if wear is visible), measurement
-- suggestions: specific, actionable advice ("Photograph the care label — buyers need fabric content to verify authenticity")
-- ready_to_list: true only if there are no missing critical shots and all scores are 3+
 
 TAG DATA:
 - Extract ALL readable text from any tag/label visible in any photo
@@ -84,17 +75,18 @@ TAG DATA:
 - care_instructions: plain English summary of care symbols/text`;
 
 function buildPlatformPrompt(platform: Platform, tone: Tone, photoCount: number): string {
+  const spec = platformListingSpec[platform];
   return `You are an expert clothing photographer and professional reselling assistant for secondhand fashion platforms.
 
 Analyse these ${photoCount} clothing photo(s) and return ONLY a valid JSON object — no markdown code fences, no explanation text, just raw JSON starting with { and ending with }.
 
-${platformListingSpec[platform].promptFragment}
+${spec.promptFragment}
 
 ${TONE_HINT[tone]}
 
 Return exactly this JSON structure (fill in all fields):
 
-${jsonShape()}
+${jsonShape(platform)}
 
 ${COMMON_RULES}
 
@@ -108,7 +100,15 @@ LISTING:
 - hashtags: ${platform === 'depop' ? 'UP TO 5 actual hashtag strings with # prefix (mix: 3 descriptive — type/brand/material — + 1–2 style/aesthetic like #y2k, #cottagecore). Each tag must be genuinely relevant.' : 'EMPTY ARRAY []. ' + (platform === 'vinted' ? 'Vinted has no hashtag system — its search reads title and description directly, so bake keywords into those instead.' : 'eBay has no tag field — search runs off the 80-char title and item specifics, so pack keywords into the title.')}
 - gender: "women" | "men" | "kids" | "unisex" — who this item is for
 - main_category: "tops" | "bottoms" | "dresses" | "outerwear" | "knitwear" | "swimwear" | "underwear" | "sportswear" | "shoes" | "accessories" | "bags" | "other"
-- subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"`;
+- subcategory: specific item type, e.g. "jeans", "hoodie", "midi dress", "trainers"
+
+FIELDS (the dropdowns/inputs the seller picks on the ${platformMetadata[platform].name} listing form):
+${spec.fieldsSchema}
+
+For every field:
+- "value" MUST come from the allowed list when one is given (don't paraphrase).
+- "hint" is optional — only include it when the rationale is non-obvious.
+- If the photos genuinely lack the info, pick the best safe default (e.g. "Unbranded" if no brand) rather than leaving the value empty.`;
 }
 
 function buildNeutralPrompt(tone: Tone, photoCount: number): string {

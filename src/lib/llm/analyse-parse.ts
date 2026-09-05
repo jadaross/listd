@@ -19,7 +19,7 @@ export function extractJsonObject(text: string): string {
  */
 export function parseAnalysisResult(buffer: string): AnalysisResult {
   const parsed = JSON.parse(extractJsonObject(buffer)) as AnalysisResult;
-  if (!parsed.listing || !parsed.photo_analysis || !parsed.tag_data) {
+  if (!parsed.listing || !parsed.tag_data) {
     throw new Error("AnalysisResult missing required top-level fields");
   }
   return parsed;

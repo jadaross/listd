@@ -52,7 +52,7 @@ usage is metered from the first release, and the meter needs someone to meter
 
 | Route | Purpose |
 |---|---|
-| `POST /api/analyse` | Photos → photo scores, tag data, and a Neutral Listing. Streams. |
+| `POST /api/analyse` | Photos → tag data and a Neutral Listing, with the named platform's form fields. Streams, title first. |
 | `POST /api/valuate` | An item → a Price Band per Enabled Platform, plus a Recommendation. Spends one Allowance unit. |
 | `POST /api/format` | Neutral Listing + platform + tone → a Platform-formatted Listing |
 | `POST /api/refine` | A Platform-formatted Listing + Refinement Chips → a rewritten one |
