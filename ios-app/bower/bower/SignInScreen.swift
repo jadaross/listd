@@ -9,7 +9,11 @@ struct SignInScreen: View {
     @Environment(\.bower) private var theme
     @Environment(\.colorScheme) private var scheme
 
-    @State private var nonce = SupabaseSession.AppleNonce()
+    // A reference holder, not @State: mutating a nonce inside the request
+    // closure must be visible to the completion closure immediately, and a
+    // @State value does not reliably propagate across the two. A mismatch
+    // here is exactly the "Nonces mismatch" GoTrue rejects.
+    @State private var nonces = NonceBox()
     @State private var working = false
     @State private var failure: String?
 
@@ -40,9 +44,10 @@ struct SignInScreen: View {
                 if let failure { rejection(failure) }
 
                 SignInWithAppleButton(.signIn) { request in
-                    nonce = SupabaseSession.AppleNonce()
+                    let fresh = SupabaseSession.AppleNonce()
+                    nonces.current = fresh
                     request.requestedScopes = [.email]
-                    request.nonce = nonce.hashed
+                    request.nonce = fresh.hashed
                 } onCompletion: { result in
                     Task { await complete(result) }
                 }
@@ -111,7 +116,7 @@ struct SignInScreen: View {
             working = true
             defer { working = false }
             do {
-                try await state.session.signInWithApple(identityToken: token, nonce: nonce)
+                try await state.session.signInWithApple(identityToken: token, nonce: nonces.current)
                 failure = nil
                 await state.didSignIn()
             } catch let error as APIError {
@@ -123,4 +128,11 @@ struct SignInScreen: View {
             }
         }
     }
+}
+
+/// Holds the nonce for the in-flight Apple request. A class so a write in the
+/// request closure is seen by the completion closure without depending on
+/// SwiftUI state propagation.
+private final class NonceBox {
+    var current = SupabaseSession.AppleNonce()
 }
